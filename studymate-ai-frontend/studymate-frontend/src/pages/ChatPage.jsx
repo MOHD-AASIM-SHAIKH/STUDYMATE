@@ -6,7 +6,7 @@ import { useChat } from "../hooks/useChat";
 import { useSession } from "../context/SessionContext";
 
 export default function ChatPage() {
-  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage } = useSession();
+  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory } = useSession();
   const { sendMessage, isSending } = useChat();
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
@@ -37,7 +37,17 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto py-2">
-        {messages.length === 0 && (
+        {isLoadingHistory && (
+          <div className="mt-16 flex justify-center">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
+              <span className="ml-1 text-sm text-ink-muted">Restoring your conversation...</span>
+            </div>
+          </div>
+        )}
+        {!isLoadingHistory && messages.length === 0 && (
           <div className="mt-16 text-center text-ink-muted">
             <p className="font-display text-lg text-ink">No questions yet</p>
             <p className="mt-1 text-sm">Ask something from your uploaded notes to get started.</p>
