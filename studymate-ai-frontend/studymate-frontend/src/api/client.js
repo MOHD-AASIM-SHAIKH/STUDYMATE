@@ -4,6 +4,10 @@
  *
  * Backend contract assumed (see README.md "Backend API contract" section
  * for the full field-by-field shape):
+ *   POST   /auth/register       (json)                        -> TokenResponse
+ *   POST   /auth/login          (json)                        -> TokenResponse
+ *   POST   /auth/refresh        (json)                        -> TokenResponse
+ *   GET    /auth/me             (bearer)                      -> UserPublic
  *   POST   /ingest              (multipart/form-data: file)   -> IngestionResponse
  *   GET    /ingest/documents                                  -> DocumentListResponse
  *   POST   /qa                  (json)                        -> QAResponse
@@ -28,6 +32,19 @@ export const apiClient = axios.create({
   headers: {
     Accept: "application/json",
   },
+});
+
+// --- Auth interceptor: attach Bearer token to every request ---
+apiClient.interceptors.request.use((config) => {
+  try {
+    const token = localStorage.getItem("studymate_access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // localStorage may be unavailable
+  }
+  return config;
 });
 
 /**

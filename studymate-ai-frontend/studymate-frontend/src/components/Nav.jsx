@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
 const NAV_ITEMS = [
@@ -9,6 +10,8 @@ const NAV_ITEMS = [
 ];
 
 export default function Nav() {
+  const { user, logout } = useAuth();
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -16,12 +19,20 @@ export default function Nav() {
         aria-label="Main navigation"
         className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface p-4 sm:flex"
       >
-        <div className="mb-8 flex items-center gap-2 px-2">
+        <div className="mb-6 flex items-center gap-2 px-2">
           <span className="font-display text-xl font-semibold text-ink">StudyMate</span>
           <span className="rounded-full bg-accent-soft/30 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide text-ink-muted">
             AI
           </span>
         </div>
+
+        {user && (
+          <div className="mb-4 rounded-card border border-line bg-paper px-3 py-2">
+            <p className="truncate text-sm font-medium text-ink">{user.display_name}</p>
+            <p className="truncate text-xs text-ink-muted">{user.email}</p>
+          </div>
+        )}
+
         <ul className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
@@ -40,16 +51,38 @@ export default function Nav() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto flex items-center justify-between px-2 pt-4">
-          <span className="text-xs text-ink-muted">Theme</span>
-          <ThemeToggle />
+
+        <div className="mt-auto space-y-2 px-2 pt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-ink-muted">Theme</span>
+            <ThemeToggle />
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted hover:bg-danger/10 hover:text-danger transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </nav>
 
       {/* Mobile top bar */}
       <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 sm:hidden">
-        <span className="font-display text-lg font-semibold text-ink">StudyMate AI</span>
-        <ThemeToggle />
+        <div className="min-w-0 flex-1">
+          <span className="font-display text-lg font-semibold text-ink">StudyMate AI</span>
+          {user && <span className="ml-2 text-xs text-ink-muted">{user.display_name}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={logout}
+            className="text-xs text-ink-muted hover:text-danger transition-colors"
+          >
+            Sign out
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Mobile bottom tab bar */}

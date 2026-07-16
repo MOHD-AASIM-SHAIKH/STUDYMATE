@@ -42,6 +42,38 @@ class DocumentListResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+class RegisterRequest(BaseModel):
+    email: str = Field(..., max_length=255, pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    password: str = Field(..., min_length=8, max_length=128)
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=128)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: "UserPublic"
+
+
+class UserPublic(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    created_at: datetime
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+# ---------------------------------------------------------------------------
 # Q&A
 # ---------------------------------------------------------------------------
 class QARequest(BaseModel):

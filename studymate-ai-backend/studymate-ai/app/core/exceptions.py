@@ -64,6 +64,16 @@ class VectorStoreError(StudyMateError):
     error_code = "vector_store_error"
 
 
+class AuthError(StudyMateError):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    error_code = "auth_error"
+
+
+class DuplicateEmailError(StudyMateError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "duplicate_email"
+
+
 def _error_response(status_code: int, error_code: str, message: str, details: dict | None = None) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,

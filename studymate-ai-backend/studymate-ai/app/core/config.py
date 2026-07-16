@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     rate_limit_ingest: str = Field(default="5/minute")
     rate_limit_default: str = Field(default="60/minute")
 
+    # --- Auth / JWT ---
+    jwt_secret_key: str = Field(default="change-me-in-production-use-a-long-random-string")
+    jwt_algorithm: str = Field(default="HS256")
+    jwt_access_token_expire_minutes: int = Field(default=60)
+    jwt_refresh_token_expire_days: int = Field(default=7)
+
     # --- Cache ---
     response_cache_size: int = Field(default=256)
 

@@ -8,7 +8,7 @@ resources (DB session) are created fresh each request.
 """
 from typing import Generator
 
-from fastapi import Depends
+from fastapi import Depends, Header
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.config import Settings, get_settings
@@ -53,3 +53,26 @@ def get_session_service_dep(db: DBSession = Depends(get_db)) -> SessionService:
 
 def get_cache_dep() -> LRUCache:
     return get_cache_service()
+
+
+def get_current_user(
+    authorization: str = Header(...),
+    db: DBSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> "User":  # noqa: F821
+    from app.core.exceptions import AuthError
+    from app.services.auth_service import decode_token, get_user_by_id
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise AuthError("Invalid authorization header. Use: Bearer <token>")
+
+    payload = decode_token(token, settings)
+    if payload.get("type") != "access":
+        raise AuthError("Invalid token type.")
+
+    user_id = payload.get("sub")
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise AuthError("User not found.")
+    return user

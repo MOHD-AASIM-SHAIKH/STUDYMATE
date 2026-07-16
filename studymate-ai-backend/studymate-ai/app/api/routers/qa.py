@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 
 from app.api.deps import (
     get_cache_dep,
+    get_current_user,
     get_retrieval_service_dep,
     get_session_service_dep,
 )
@@ -12,6 +13,7 @@ from app.core.config import get_settings
 from app.core.logging_config import get_logger
 from app.core.security import limiter
 from app.db.chroma_client import ChromaClient
+from app.db.sqlite_client import User
 from app.models.schemas import QARequest, QAResponse, SourceCitation
 from app.services.cache_service import LRUCache
 from app.services.retrieval_service import RetrievalService
@@ -29,11 +31,12 @@ def ask_question(
     retrieval_service: RetrievalService = Depends(get_retrieval_service_dep),
     session_service: SessionService = Depends(get_session_service_dep),
     cache: LRUCache = Depends(get_cache_dep),
+    current_user: User = Depends(get_current_user),
 ) -> QAResponse:
     """Answer a student's question using ONLY retrieved teacher-provided
     material, with a mandatory source citation."""
     start = time.perf_counter()
-    session_id = session_service.get_or_create(payload.session_id)
+    session_id = session_service.get_or_create(payload.session_id, user_id=current_user.id)
 
     chroma: ChromaClient = ChromaClient.get_instance()
     cache_key = cache.make_key(

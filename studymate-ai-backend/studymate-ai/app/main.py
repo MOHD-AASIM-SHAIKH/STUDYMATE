@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routers import health, ingestion, notes, qa, sessions
+from app.api.routers import auth, health, ingestion, notes, qa, sessions
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, get_logger
@@ -55,6 +55,7 @@ async def log_requests(request: Request, call_next):
 
 
 # --- Routers ---
+app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(ingestion.router)
 app.include_router(qa.router)

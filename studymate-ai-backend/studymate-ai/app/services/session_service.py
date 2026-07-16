@@ -24,22 +24,20 @@ class SessionService:
     def __init__(self, db: DBSession):
         self._db = db
 
-    def get_or_create(self, session_id: str | None) -> str:
+    def get_or_create(self, session_id: str | None, user_id: str | None = None) -> str:
         if session_id:
             existing = self._db.get(StudentSession, session_id)
             if existing:
                 existing.last_active_at = datetime.now(timezone.utc)
                 self._db.commit()
                 return existing.id
-            # Client supplied an id we don't recognize — create it rather
-            # than erroring, so a client-generated UUID scheme also works.
-            new_session = StudentSession(id=session_id)
+            new_session = StudentSession(id=session_id, user_id=user_id or "")
             self._db.add(new_session)
             self._db.commit()
             return new_session.id
 
         new_id = str(uuid.uuid4())
-        self._db.add(StudentSession(id=new_id))
+        self._db.add(StudentSession(id=new_id, user_id=user_id or ""))
         self._db.commit()
         return new_id
 

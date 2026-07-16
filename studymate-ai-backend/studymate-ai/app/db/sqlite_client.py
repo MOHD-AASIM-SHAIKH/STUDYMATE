@@ -19,14 +19,26 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True)  # UUID
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    display_name = Column(String(100), nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class StudentSession(Base):
     __tablename__ = "sessions"
 
     id = Column(String(36), primary_key=True)  # UUID
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_active_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     history = relationship("QAHistory", back_populates="session", cascade="all, delete-orphan")
+    user = relationship("User")
 
 
 class QAHistory(Base):
@@ -48,10 +60,13 @@ class DocumentMetadata(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     document_id = Column(String(36), unique=True, nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     page_count = Column(Integer, default=0)
     chunk_count = Column(Integer, default=0)
     uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
 
 
 _engine = None

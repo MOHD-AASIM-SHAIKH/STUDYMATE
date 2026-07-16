@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request, UploadFile, File
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_document_service_dep
+from app.api.deps import get_current_user, get_document_service_dep
 from app.core.config import Settings, get_settings
 from app.core.exceptions import UnsupportedFileTypeError
 from app.core.logging_config import get_logger
 from app.core.security import limiter
-from app.db.sqlite_client import DocumentMetadata, get_db
+from app.db.sqlite_client import DocumentMetadata, User, get_db
 from app.models.schemas import DocumentInfo, DocumentListResponse, IngestionResponse
 from app.services.document_service import DocumentService
 from app.utils.text_extraction import SUPPORTED_EXTENSIONS
@@ -25,6 +25,7 @@ def ingest_document(
     document_service: DocumentService = Depends(get_document_service_dep),
     settings: Settings = Depends(get_settings),
     db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> IngestionResponse:
     """Upload a teacher-provided PDF/DOCX/TXT file. It is parsed, chunked,
     embedded, and stored in the vector store for later retrieval."""
@@ -42,6 +43,7 @@ def ingest_document(
 
     db_meta = DocumentMetadata(
         document_id=result.document_id,
+        user_id=current_user.id,
         filename=result.filename,
         page_count=result.page_count,
         chunk_count=result.chunks_created,
@@ -56,10 +58,12 @@ def ingest_document(
 @router.get("/documents", response_model=DocumentListResponse)
 def list_ingested_documents(
     db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DocumentListResponse:
-    """List all previously ingested documents with metadata."""
+    """List all previously ingested documents for the current user."""
     rows = (
         db.query(DocumentMetadata)
+        .filter(DocumentMetadata.user_id == current_user.id)
         .order_by(DocumentMetadata.uploaded_at.desc())
         .all()
     )
