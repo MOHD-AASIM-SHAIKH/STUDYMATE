@@ -9,7 +9,7 @@ from typing import List, Optional
 from app.core.config import Settings
 from app.core.logging_config import Timer, get_logger
 from app.db.chroma_client import ChromaClient
-from app.models.schemas import SourceCitation
+from app.models.schemas import QAHistoryItem, SourceCitation
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMProvider
 
@@ -23,7 +23,7 @@ student's own teacher notes or textbook. Do not use outside knowledge or guess.
 {retrieved_chunks}
 === END CONTEXT ===
 
-STUDENT QUESTION: {user_question}
+{conversation_history}STUDENT QUESTION: {user_question}
 Difficulty level: {difficulty_level}
 Response language: {language}
 
@@ -34,6 +34,7 @@ Rules:
 - "exam-level": precise terminology, exam-style structure, key definitions/formulas.
 - Respond in the specified language regardless of question language.
 - Never invent citations.
+- Use the conversation history to understand follow-up questions (e.g., "explain in detail" refers to the previous topic).
 """
 
 NO_CONTEXT_MESSAGE_TEMPLATE = (
@@ -111,6 +112,8 @@ class RetrievalService:
         difficulty_level: str,
         language: str,
         top_k: Optional[int] = None,
+        history: Optional[List[QAHistoryItem]] = None,
+        display_question: Optional[str] = None,
     ) -> RAGResult:
         chunks = self.retrieve(question, top_k=top_k)
 
@@ -118,15 +121,18 @@ class RetrievalService:
             return RAGResult(answer=NO_CONTEXT_MESSAGE_TEMPLATE, sources=[], sufficient_context=False)
 
         retrieved_text = self._format_chunks_for_prompt(chunks)
+        history_text = self._format_history_for_prompt(history or [])
+        user_question = display_question or question
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
             retrieved_chunks=retrieved_text,
-            user_question=question,
+            conversation_history=history_text,
+            user_question=user_question,
             difficulty_level=difficulty_level,
             language=language,
         )
 
         with Timer(logger, "LLM generation"):
-            raw_answer = self._llm.generate(system_prompt=system_prompt, user_prompt=question)
+            raw_answer = self._llm.generate(system_prompt=system_prompt, user_prompt=user_question)
 
         sources = [
             SourceCitation(
@@ -138,6 +144,17 @@ class RetrievalService:
             for c in chunks
         ]
         return RAGResult(answer=raw_answer.strip(), sources=sources, sufficient_context=True)
+
+    @staticmethod
+    def _format_history_for_prompt(history: List[QAHistoryItem]) -> str:
+        if not history:
+            return ""
+        lines = ["=== RECENT CONVERSATION ==="]
+        for item in history:
+            lines.append(f"Student: {item.question}")
+            lines.append(f"Assistant: {item.answer}")
+        lines.append("=== END CONVERSATION ===\n")
+        return "\n".join(lines) + "\n"
 
     @staticmethod
     def _format_chunks_for_prompt(chunks: List[RetrievedChunk]) -> str:

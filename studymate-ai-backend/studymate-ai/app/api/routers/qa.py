@@ -62,11 +62,23 @@ def ask_question(
             latency_ms=round((time.perf_counter() - start) * 1000, 2),
         )
 
+    history = session_service.get_history(session_id, limit=5)
+
+    # For follow-up questions, combine the last question with the current one
+    # so retrieval finds relevant chunks even for vague follow-ups like "explain in detail"
+    retrieval_query = payload.question
+    if history:
+        last_q = history[-1].question
+        if len(payload.question.split()) < 5:  # short follow-up
+            retrieval_query = f"{last_q} {payload.question}"
+
     result = retrieval_service.answer_question(
-        question=payload.question,
+        question=retrieval_query,
+        display_question=payload.question,
         difficulty_level=payload.difficulty_level,
         language=payload.language,
         top_k=payload.top_k,
+        history=history,
     )
 
     cache.set(
