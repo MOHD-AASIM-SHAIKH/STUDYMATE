@@ -1,18 +1,23 @@
 """Extracts text (with page numbers / section titles where available) from
-PDF, DOCX, and TXT files."""
+PDF, DOCX, TXT, and image files (PNG, JPG, BMP, TIFF). For scanned/image-only
+PDFs, OCR is used as a fallback."""
 import imghdr
 import io
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 import pdfplumber
 from docx import Document as DocxDocument
 
 from app.core.exceptions import DocumentParsingError, UnsupportedFileTypeError
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"} | IMAGE_EXTENSIONS
 
 # Matches lines that look like headings, e.g. "1. Introduction", "Chapter 2:", "## Title"
 _HEADING_RE = re.compile(r"^(#{1,3}\s+.+|chapter\s+\w+.*|\d+(\.\d+)*\s+[A-Z].{0,80})$", re.IGNORECASE)
@@ -36,6 +41,8 @@ def extract_text(file_bytes: bytes, filename: str) -> List[ExtractedPage]:
         return _extract_docx(file_bytes)
     if ext == ".txt":
         return _extract_txt(file_bytes)
+    if ext in IMAGE_EXTENSIONS:
+        return _extract_image(file_bytes, filename)
     raise UnsupportedFileTypeError(
         f"Unsupported file type '{ext}'. Supported types: {sorted(SUPPORTED_EXTENSIONS)}"
     )
@@ -86,8 +93,9 @@ def _extract_pdf(file_bytes: bytes) -> List[ExtractedPage]:
     except Exception as exc:
         raise DocumentParsingError(f"Failed to parse PDF: {exc}") from exc
 
-    if not pages:
-        raise DocumentParsingError("No extractable text found in PDF (it may be a scanned/image-only PDF).")
+    if not pages or all(not p.text.strip() for p in pages):
+        logger.info("No extractable text found via pdfplumber — falling back to OCR")
+        return _extract_pdf_with_ocr(file_bytes)
     return pages
 
 
@@ -160,6 +168,37 @@ def _extract_txt(file_bytes: bytes) -> List[ExtractedPage]:
 
     section_title = _guess_section_title(text)
     return [ExtractedPage(text=text, page_number=None, section_title=section_title)]
+
+
+def _extract_image(file_bytes: bytes, filename: str) -> List[ExtractedPage]:
+    """Run OCR on an image file and return the extracted text."""
+    from app.services.ocr_service import get_ocr_service
+
+    ocr = get_ocr_service()
+    text = ocr.extract_text(file_bytes)
+    section_title = _guess_section_title(text)
+    return [ExtractedPage(text=text, page_number=None, section_title=section_title)]
+
+
+def _extract_pdf_with_ocr(file_bytes: bytes) -> List[ExtractedPage]:
+    """Fallback for scanned/image-only PDFs: render each page with PyMuPDF
+    and run OCR on the rendered image."""
+    import fitz
+
+    from app.services.ocr_service import get_ocr_service
+
+    ocr = get_ocr_service()
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    pages: List[ExtractedPage] = []
+    for i in range(doc.page_count):
+        page = doc[i]
+        mat = fitz.Matrix(1.5, 1.5)  # 1.5x zoom for OCR accuracy vs speed balance
+        pix = page.get_pixmap(matrix=mat)
+        img_bytes = pix.tobytes("png")
+        text = ocr.extract_text(img_bytes)
+        pages.append(ExtractedPage(text=text, page_number=i + 1, section_title=None))
+    doc.close()
+    return pages
 
 
 def _guess_section_title(text: str) -> Optional[str]:

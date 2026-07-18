@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routers import auth, flashcards, health, ingestion, notes, qa, quiz, sessions
+from app.api.routers import auth, flashcards, health, ingestion, notes, ocr, qa, quiz, sessions
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, get_logger
@@ -14,6 +14,7 @@ from app.core.security import limiter
 from app.db.chroma_client import ChromaClient
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
+from app.services.ocr_service import get_ocr_service
 
 settings = get_settings()
 configure_logging()
@@ -61,6 +62,7 @@ app.include_router(health.router)
 app.include_router(ingestion.router)
 app.include_router(qa.router)
 app.include_router(notes.router)
+app.include_router(ocr.router)
 app.include_router(sessions.router)
 app.include_router(quiz.router)
 
@@ -78,3 +80,9 @@ def on_startup() -> None:
         doc_service.rebuild_index_from_disk_if_empty()
     except Exception as exc:  # pragma: no cover - startup should never crash the app
         logger.error(f"Startup index rebuild failed: {exc}")
+
+    try:
+        ocr = get_ocr_service()
+        ocr.ensure_ready()
+    except Exception as exc:
+        logger.error(f"OCR initialization failed: {exc}")

@@ -5,6 +5,7 @@ import DifficultyToggle from "../components/DifficultyToggle";
 import LanguageSelector from "../components/LanguageSelector";
 import { useChat } from "../hooks/useChat";
 import { useSession } from "../context/SessionContext";
+import { ocrImage, ocrIngest } from "../api/endpoints";
 
 export default function ChatPage() {
   const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory, sessionId } = useSession();
@@ -13,8 +14,12 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [ocrText, setOcrText] = useState(null); // { filename, text }
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrIngesting, setOcrIngesting] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const ocrInputRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -45,6 +50,33 @@ export default function ChatPage() {
     }
     setEditingIndex(null);
     setEditValue("");
+  };
+
+  const handleOcrFile = async (file) => {
+    if (!file) return;
+    setOcrLoading(true);
+    setOcrText(null);
+    try {
+      const result = await ocrImage(file);
+      setOcrText({ filename: file.name, text: result.text });
+    } catch (err) {
+      console.error("OCR failed:", err);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const handleOcrIngest = async () => {
+    if (!ocrText) return;
+    setOcrIngesting(true);
+    try {
+      await ocrIngest(new File([ocrText.text], `${ocrText.filename.replace(/\.[^.]+$/, "")}.txt`, { type: "text/plain" }));
+      setOcrText(null);
+    } catch (err) {
+      console.error("OCR ingest failed:", err);
+    } finally {
+      setOcrIngesting(false);
+    }
   };
 
   const handleExport = () => {
@@ -239,7 +271,70 @@ export default function ChatPage() {
             <div ref={scrollRef} />
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-3 flex shrink-0 items-end gap-2 sm:mt-4">
+          {ocrText && (
+            <div className="shrink-0 rounded-xl border border-accent/30 bg-accent/5 p-3 animate-fade-slide-in">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-accent">{ocrText.filename}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setInput((prev) => (prev ? prev + "\n\n" : "") + ocrText.text); setOcrText(null); }}
+                    className="rounded px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 transition-colors"
+                  >
+                    Use in chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOcrIngest}
+                    disabled={ocrIngesting}
+                    className="rounded px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 transition-colors disabled:opacity-40"
+                  >
+                    {ocrIngesting ? "Saving..." : "Save to library"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOcrText(null)}
+                    className="flex h-6 w-6 items-center justify-center rounded text-ink-muted hover:text-ink hover:bg-line/40 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap rounded-lg bg-paper p-2 text-xs text-ink leading-relaxed max-h-32 overflow-y-auto border border-line/50">
+                {ocrText.text}
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-3 flex shrink-0 items-end gap-1.5 sm:gap-2">
+            <input
+              ref={ocrInputRef}
+              type="file"
+              accept=".png,.jpg,.jpeg,.bmp,.tiff"
+              className="sr-only"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleOcrFile(f); e.target.value = ""; }}
+            />
+            <button
+              type="button"
+              onClick={() => ocrInputRef.current?.click()}
+              disabled={ocrLoading}
+              className="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-muted hover:text-ink hover:border-accent/50 disabled:opacity-30 transition-all"
+              title="OCR a scanned image"
+            >
+              {ocrLoading ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                  <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="40" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              )}
+            </button>
             <div className="relative flex-1">
               <textarea
                 ref={inputRef}

@@ -225,6 +225,34 @@ class QuizResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# OCR
+# ---------------------------------------------------------------------------
+class OcrResponse(BaseModel):
+    text: str
+    pages: int = 1
+
+
+class OcrIngestResponse(IngestionResponse):
+    ocr_text_preview: str = ""
+
+
+class OcrTaskResponse(BaseModel):
+    task_id: str
+    status: str = "processing"
+
+
+class OcrTaskStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    progress: int = 0
+    current_page: int = 0
+    total_pages: int = 0
+    ocr_text_preview: str = ""
+    error: Optional[str] = None
+    result: Optional[dict] = None
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 class HealthResponse(BaseModel):

@@ -164,6 +164,42 @@ export async function listDocuments() {
   return data.documents;
 }
 
+/** POST /ocr — quick OCR (returns extracted text) */
+export async function ocrImage(file, onProgress) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post("/ocr", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress: (evt) => {
+      if (onProgress && evt.total) {
+        onProgress(Math.round((evt.loaded / evt.total) * 100));
+      }
+    },
+  });
+  return data; // { text, pages }
+}
+
+/** POST /ocr/ingest — OCR then chunk/embed/store (async, returns task_id) */
+export async function ocrIngest(file, onProgress) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post("/ocr/ingest", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress: (evt) => {
+      if (onProgress && evt.total) {
+        onProgress(Math.round((evt.loaded / evt.total) * 100));
+      }
+    },
+  });
+  return data; // { task_id, status }
+}
+
+/** GET /ocr/status/:taskId — poll async OCR task progress */
+export async function getOcrStatus(taskId) {
+  const { data } = await apiClient.get(`/ocr/status/${encodeURIComponent(taskId)}`);
+  return data; // { task_id, status, progress, current_page, total_pages, ocr_text_preview, error, result }
+}
+
 /** GET /health */
 export async function getHealth() {
   const { data } = await apiClient.get("/health");

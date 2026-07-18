@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-const ACCEPTED = ".pdf,.docx,.txt";
+const ACCEPTED = ".pdf,.docx,.txt,.png,.jpg,.jpeg,.bmp,.tiff";
 
 export default function FileUploader({ onFiles }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -18,7 +18,7 @@ export default function FileUploader({ onFiles }) {
     <div
       role="button"
       tabIndex={0}
-      aria-label="Upload teacher notes or textbook (PDF, DOCX, or TXT)"
+      aria-label="Upload teacher notes or textbook (PDF, DOCX, TXT, or image)"
       onClick={() => inputRef.current?.click()}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
@@ -47,7 +47,7 @@ export default function FileUploader({ onFiles }) {
         </svg>
       </div>
       <p className="font-display text-lg text-ink">Drop teacher notes here</p>
-      <p className="mt-1 text-sm text-ink-muted">or click to browse — PDF, DOCX, or TXT</p>
+      <p className="mt-1 text-sm text-ink-muted">or click to browse — PDF, DOCX, TXT, or images</p>
       <input
         ref={inputRef}
         type="file"

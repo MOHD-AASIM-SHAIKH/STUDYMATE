@@ -10,7 +10,7 @@ from app.db.chroma_client import ChromaClient
 from app.models.schemas import IngestionResponse
 from app.services.embedding_service import EmbeddingService
 from app.utils.chunking import chunk_text
-from app.utils.text_extraction import IMAGES_DIR, extract_text
+from app.utils.text_extraction import IMAGES_DIR, SUPPORTED_EXTENSIONS, extract_text
 
 logger = get_logger(__name__)
 
@@ -108,7 +108,7 @@ class DocumentService:
         if not docs_dir.exists():
             return
 
-        files = [f for f in docs_dir.iterdir() if f.is_file() and f.suffix.lower() in {".pdf", ".docx", ".txt"}]
+        files = [f for f in docs_dir.iterdir() if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS]
         if not files:
             return
 

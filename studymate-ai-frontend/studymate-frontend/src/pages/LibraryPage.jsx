@@ -16,8 +16,8 @@ export default function LibraryPage() {
         <div className="mb-6">
           <h1 className="font-display text-xl text-ink">Library</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Upload teacher notes and textbooks (PDF, DOCX, or TXT) so answers and study notes can be
-            grounded in them.
+            Upload teacher notes, textbooks, or scanned documents (PDF, DOCX, TXT, or images) so
+            answers and study notes can be grounded in them. Images are OCR'd automatically.
           </p>
         </div>
 
@@ -30,45 +30,65 @@ export default function LibraryPage() {
             {uploads.map((u) => (
               <div
                 key={u.id}
-                className="flex items-center justify-between rounded-lg border border-line bg-surface px-4 py-3 text-sm shadow-sm"
+                className="rounded-lg border border-line bg-surface px-4 py-3 text-sm shadow-sm"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    u.status === "done" ? "bg-accent/10" : u.status === "error" ? "bg-danger/10" : "bg-ink-muted/10"
-                  }`}>
-                    {u.status === "done" ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : u.status === "error" ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-danger">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink-muted">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="truncate text-ink font-medium">{u.filename}</span>
-                </div>
-                {u.status === "uploading" && (
-                  <div className="ml-4 flex w-28 items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-                      <div
-                        className="h-full rounded-full bg-accent transition-all duration-300"
-                        style={{ width: `${u.progress}%` }}
-                      />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      u.status === "done" ? "bg-accent/10" : u.status === "error" ? "bg-danger/10" : "bg-ink-muted/10"
+                    }`}>
+                      {u.status === "done" ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : u.status === "error" ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-danger">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="15" y1="9" x2="9" y2="15" />
+                          <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink-muted">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                      )}
                     </div>
-                    <span className="text-xs text-ink-muted w-8 text-right">{u.progress}%</span>
+                    <span className="truncate text-ink font-medium">{u.filename}</span>
                   </div>
+                  {u.status === "ocr_processing" && (
+                    <span className="shrink-0 flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-medium text-accent">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                        <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="40" />
+                      </svg>
+                      {u.pageInfo ? `Page ${u.pageInfo}` : "Processing"}
+                    </span>
+                  )}
+                  {(u.status === "uploading" || u.status === "ocr_processing") && (
+                    <div className="ml-4 flex w-28 items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all duration-300"
+                          style={{ width: `${Math.min(u.progress, 99)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-ink-muted w-8 text-right">{Math.round(u.progress)}%</span>
+                    </div>
+                  )}
+                  {u.status === "done" && <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-medium text-accent">Ingested</span>}
+                  {u.status === "error" && <span className="shrink-0 text-xs text-danger">{u.error}</span>}
+                </div>
+                {u.ocrPreview && (
+                  <details className="mt-2 group cursor-pointer">
+                    <summary className="text-[11px] text-ink-muted hover:text-ink transition-colors select-none">
+                      OCR preview
+                    </summary>
+                    <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-paper p-2 text-xs text-ink leading-relaxed border border-line">
+                      {u.ocrPreview}
+                    </p>
+                  </details>
                 )}
-                {u.status === "done" && <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-medium text-accent">Ingested</span>}
-                {u.status === "error" && <span className="shrink-0 text-xs text-danger">{u.error}</span>}
               </div>
             ))}
           </div>
