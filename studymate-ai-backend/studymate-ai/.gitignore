@@ -8,6 +8,7 @@ storage/chroma/*
 storage/*.db
 ingested_docs/*
 !ingested_docs/.gitkeep
+storage/extracted_images/*
 .pytest_cache/
 *.egg-info/
 .DS_Store

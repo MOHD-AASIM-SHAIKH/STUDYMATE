@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user, get_document_service_dep
@@ -11,7 +13,7 @@ from app.core.security import limiter
 from app.db.sqlite_client import DocumentMetadata, User, get_db
 from app.models.schemas import DocumentInfo, DocumentListResponse, IngestionResponse
 from app.services.document_service import DocumentService
-from app.utils.text_extraction import SUPPORTED_EXTENSIONS
+from app.utils.text_extraction import IMAGES_DIR, SUPPORTED_EXTENSIONS
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 logger = get_logger(__name__)
@@ -79,3 +81,20 @@ def list_ingested_documents(
             for r in rows
         ]
     )
+
+
+@router.get("/images/{document_id}/{filename}")
+def get_document_image(
+    document_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+) -> FileResponse:
+    """Serve an extracted image from an ingested document."""
+    settings = get_settings()
+    img_path = Path(settings.chroma_persist_dir).parent / IMAGES_DIR / document_id / filename
+    if not img_path.exists() or not img_path.is_file():
+        raise HTTPException(status_code=404, detail="Image not found.")
+    return FileResponse(str(img_path))
+
+
+

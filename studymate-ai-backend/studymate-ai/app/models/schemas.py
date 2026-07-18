@@ -105,6 +105,7 @@ class QAResponse(BaseModel):
     session_id: str
     answer: str
     sources: List[SourceCitation]
+    images: List[str] = []
     sufficient_context: bool
     difficulty_level: str
     language: str

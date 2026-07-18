@@ -7,7 +7,7 @@ import { useSession } from "../context/SessionContext";
 
 export default function ChatPage() {
   const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory } = useSession();
-  const { sendMessage, isSending } = useChat();
+  const { sendMessage, cancelStream, isSending } = useChat();
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
 
@@ -56,7 +56,7 @@ export default function ChatPage() {
         {messages.map((m) => (
           <ChatBubble key={m.id} message={m} />
         ))}
-        {isSending && (
+        {isSending && !messages.some((m) => m.streaming) && (
           <div className="flex justify-start">
             <div className="flex items-center gap-1.5 rounded-card rounded-tl-sm border border-line bg-surface px-4 py-3">
               <TypingDot delay="0ms" />
@@ -86,13 +86,23 @@ export default function ChatPage() {
           placeholder="Ask a question about your notes..."
           className="max-h-32 flex-1 resize-none rounded-card border border-line bg-surface px-4 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent"
         />
-        <button
-          type="submit"
-          disabled={isSending || !input.trim()}
-          className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-        >
-          Send
-        </button>
+        {isSending ? (
+          <button
+            type="button"
+            onClick={cancelStream}
+            className="rounded-full bg-danger px-4 py-2.5 text-sm font-medium text-white"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Send
+          </button>
+        )}
       </form>
     </div>
   );

@@ -72,6 +72,10 @@ export function SessionProvider({ children }) {
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), createdAt: new Date(), ...message }]);
   }, []);
 
+  const updateLastMessage = useCallback((id, updates) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
+  }, []);
+
   const resetChat = useCallback(() => {
     setMessages([]);
     setSessionId(null);
@@ -124,10 +128,11 @@ export function SessionProvider({ children }) {
       setLanguage,
       messages,
       addMessage,
+      updateLastMessage,
       resetChat,
       isLoadingHistory,
     }),
-    [sessionId, difficultyLevel, language, messages, addMessage, resetChat, isLoadingHistory]
+    [sessionId, difficultyLevel, language, messages, addMessage, updateLastMessage, resetChat, isLoadingHistory]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

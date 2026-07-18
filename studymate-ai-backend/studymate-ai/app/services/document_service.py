@@ -10,7 +10,7 @@ from app.db.chroma_client import ChromaClient
 from app.models.schemas import IngestionResponse
 from app.services.embedding_service import EmbeddingService
 from app.utils.chunking import chunk_text
-from app.utils.text_extraction import extract_text
+from app.utils.text_extraction import IMAGES_DIR, extract_text
 
 logger = get_logger(__name__)
 
@@ -41,6 +41,9 @@ class DocumentService:
         all_texts: List[str] = []
         all_metadatas: List[dict] = []
 
+        # Save extracted images for this document
+        saved_images = self._save_extracted_images(document_id, pages)
+
         running_index = 0
         for page in pages:
             chunks = chunk_text(
@@ -51,6 +54,11 @@ class DocumentService:
                 section_title=page.section_title,
                 start_index=running_index,
             )
+            # Get image filenames for this page
+            page_image_files = [
+                img["filename"] for img in saved_images
+                if img["page_number"] == page.page_number
+            ]
             for chunk in chunks:
                 all_ids.append(f"{document_id}::{chunk.chunk_index}")
                 all_texts.append(chunk.text)
@@ -61,6 +69,7 @@ class DocumentService:
                         "page_number": chunk.page_number if chunk.page_number is not None else -1,
                         "section_title": chunk.section_title or "",
                         "chunk_index": chunk.chunk_index,
+                        "images": ",".join(page_image_files) if page_image_files else "",
                     }
                 )
                 running_index += 1
@@ -109,6 +118,25 @@ class DocumentService:
                 self.ingest(f.read_bytes(), f.name)
             except Exception as exc:  # pragma: no cover - best-effort
                 logger.warning(f"Failed to re-ingest '{f.name}' during startup rebuild: {exc}")
+
+    def _save_extracted_images(self, document_id: str, pages) -> List[dict]:
+        saved = []
+        images_dir = Path(self._settings.chroma_persist_dir).parent / IMAGES_DIR / document_id
+        images_dir.mkdir(parents=True, exist_ok=True)
+        for page in pages:
+            for img in page.images:
+                try:
+                    img_path = images_dir / img["filename"]
+                    img_path.write_bytes(img["image_bytes"])
+                    saved.append({
+                        "filename": img["filename"],
+                        "page_number": img["page_number"],
+                    })
+                except Exception as exc:
+                    logger.warning(f"Failed to save image {img['filename']}: {exc}")
+        if saved:
+            logger.info(f"Saved {len(saved)} image(s) for document {document_id}")
+        return saved
 
     def _save_backup_copy(self, file_bytes: bytes, filename: str) -> None:
 

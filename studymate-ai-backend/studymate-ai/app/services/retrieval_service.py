@@ -4,9 +4,9 @@ prompt, call the LLM, and attach source citations pulled straight from chunk
 metadata (never invented by the model).
 """
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Generator, List, Optional
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.logging_config import Timer, get_logger
 from app.db.chroma_client import ChromaClient
 from app.models.schemas import QAHistoryItem, SourceCitation
@@ -50,12 +50,15 @@ class RetrievedChunk:
     page_number: Optional[int]
     section_title: Optional[str]
     similarity_score: float  # 0..1, higher = more similar
+    document_id: str = ""
+    images: str = ""  # comma-separated image filenames
 
 
 @dataclass
 class RAGResult:
     answer: str
     sources: List[SourceCitation]
+    images: List[str]
     sufficient_context: bool
 
 
@@ -97,6 +100,8 @@ class RetrievalService:
                     page_number=page_number if page_number and page_number > 0 else None,
                     section_title=meta.get("section_title") or None,
                     similarity_score=round(similarity, 4),
+                    document_id=meta.get("document_id", ""),
+                    images=meta.get("images", ""),
                 )
             )
 
@@ -118,7 +123,7 @@ class RetrievalService:
         chunks = self.retrieve(question, top_k=top_k)
 
         if not chunks:
-            return RAGResult(answer=NO_CONTEXT_MESSAGE_TEMPLATE, sources=[], sufficient_context=False)
+            return RAGResult(answer=NO_CONTEXT_MESSAGE_TEMPLATE, sources=[], images=[], sufficient_context=False)
 
         retrieved_text = self._format_chunks_for_prompt(chunks)
         history_text = self._format_history_for_prompt(history or [])
@@ -134,6 +139,14 @@ class RetrievalService:
         with Timer(logger, "LLM generation"):
             raw_answer = self._llm.generate(system_prompt=system_prompt, user_prompt=user_question)
 
+        image_base = "/ingest/images"
+        all_images = []
+        for c in chunks:
+            if c.images:
+                for img_name in c.images.split(","):
+                    if img_name.strip():
+                        all_images.append(f"{image_base}/{c.document_id}/{img_name.strip()}")
+
         sources = [
             SourceCitation(
                 filename=c.filename,
@@ -143,7 +156,67 @@ class RetrievalService:
             )
             for c in chunks
         ]
-        return RAGResult(answer=raw_answer.strip(), sources=sources, sufficient_context=True)
+        return RAGResult(answer=raw_answer.strip(), sources=sources, images=all_images, sufficient_context=True)
+
+    def answer_question_stream(
+        self,
+        question: str,
+        difficulty_level: str,
+        language: str,
+        top_k: Optional[int] = None,
+        history: Optional[List[QAHistoryItem]] = None,
+        display_question: Optional[str] = None,
+    ) -> Generator[tuple[str, Optional[dict]], None, None]:
+        """Like answer_question but yields (token, meta) tuples.
+        The first yield has meta with sources/images; subsequent yields have
+        meta=None and the text token."""
+        chunks = self.retrieve(question, top_k=top_k)
+
+        if not chunks:
+            yield ("", {"sources": [], "images": [], "sufficient_context": False})
+            return
+
+        retrieved_text = self._format_chunks_for_prompt(chunks)
+        history_text = self._format_history_for_prompt(history or [])
+        user_question = display_question or question
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+            retrieved_chunks=retrieved_text,
+            conversation_history=history_text,
+            user_question=user_question,
+            difficulty_level=difficulty_level,
+            language=language,
+        )
+
+        image_base = "/ingest/images"
+        all_images = []
+        for c in chunks:
+            if c.images:
+                for img_name in c.images.split(","):
+                    if img_name.strip():
+                        all_images.append(f"{image_base}/{c.document_id}/{img_name.strip()}")
+
+        sources = [
+            SourceCitation(
+                filename=c.filename,
+                page_number=c.page_number,
+                section_title=c.section_title,
+                similarity_score=c.similarity_score,
+            )
+            for c in chunks
+        ]
+
+        meta = {
+            "sources": [s.model_dump() for s in sources],
+            "images": all_images,
+            "sufficient_context": True,
+        }
+
+        # Yield meta first (token="")
+        yield ("", meta)
+
+        with Timer(logger, "LLM streaming generation"):
+            for token in self._llm.generate_stream(system_prompt=system_prompt, user_prompt=user_question):
+                yield (token, None)
 
     @staticmethod
     def _format_history_for_prompt(history: List[QAHistoryItem]) -> str:

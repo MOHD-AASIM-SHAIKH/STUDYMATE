@@ -8,7 +8,7 @@ a ready-to-fill stub — swapping providers is a one-line config change
 routers, etc. only ever talk to `LLMProvider`).
 """
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Generator, Optional
 
 from groq import Groq
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -27,6 +27,13 @@ class LLMProvider(ABC):
     def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
         """Return the model's text completion for the given prompts."""
         raise NotImplementedError
+
+    def generate_stream(
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.2
+    ) -> Generator[str, None, None]:
+        """Yield text chunks as they are generated. Default falls back to
+        non-streaming for providers that don't implement streaming."""
+        yield self.generate(system_prompt, user_prompt, temperature)
 
 
 class GroqProvider(LLMProvider):
@@ -53,6 +60,29 @@ class GroqProvider(LLMProvider):
             return completion.choices[0].message.content or ""
         except Exception as exc:
             logger.error("Groq API call failed", extra={"ctx": {"error": str(exc)}})
+            raise LLMProviderError("The AI provider failed to respond. Please try again shortly.") from exc
+
+    def generate_stream(
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.2
+    ) -> Generator[str, None, None]:
+        try:
+            stream = self._client.chat.completions.create(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_tokens=1500,
+                timeout=self._timeout,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield delta
+        except Exception as exc:
+            logger.error("Groq streaming API call failed", extra={"ctx": {"error": str(exc)}})
             raise LLMProviderError("The AI provider failed to respond. Please try again shortly.") from exc
 
 
