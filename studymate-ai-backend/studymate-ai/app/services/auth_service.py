@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core.config import Settings, get_settings
 from app.core.exceptions import AuthError, DuplicateEmailError
-from app.db.sqlite_client import User
+from app.db.sqlite_client import TokenBlacklist, User, cleanup_expired_blacklist
 from app.models.schemas import UserPublic
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,13 +24,25 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(user_id: str, settings: Settings) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
-    to_encode = {"sub": user_id, "exp": expire, "type": "access"}
+    to_encode = {
+        "sub": user_id,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid4()),
+        "type": "access",
+    }
     return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
 def create_refresh_token(user_id: str, settings: Settings) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_token_expire_days)
-    to_encode = {"sub": user_id, "exp": expire, "type": "refresh"}
+    to_encode = {
+        "sub": user_id,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid4()),
+        "type": "refresh",
+    }
     return jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
@@ -40,6 +52,60 @@ def decode_token(token: str, settings: Settings) -> dict:
         return payload
     except JWTError:
         raise AuthError("Invalid or expired token.")
+
+
+def _blacklist_token(db: DBSession, jti: str, token_type: str, expires_at: datetime) -> None:
+    entry = TokenBlacklist(
+        jti=jti,
+        token_type=token_type,
+        expires_at=expires_at,
+    )
+    db.add(entry)
+    db.commit()
+
+
+def _is_token_blacklisted(db: DBSession, jti: str) -> bool:
+    return db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first() is not None
+
+
+def verify_refresh_token(token: str, settings: Settings, db: DBSession) -> dict:
+    payload = decode_token(token, settings)
+    if payload.get("type") != "refresh":
+        raise AuthError("Invalid token type.")
+
+    jti = payload.get("jti")
+    if jti and _is_token_blacklisted(db, jti):
+        raise AuthError("Refresh token has been revoked.")
+
+    return payload
+
+
+def revoke_refresh_token(token: str, settings: Settings, db: DBSession) -> None:
+    payload = decode_token(token, settings)
+    jti = payload.get("jti")
+    if jti:
+        exp_ts = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc)
+        _blacklist_token(db, jti, "refresh", expires_at)
+
+
+def rotate_refresh_token(
+    old_token: str, settings: Settings, db: DBSession
+) -> tuple[str, str, dict]:
+    payload = verify_refresh_token(old_token, settings, db)
+
+    jti = payload.get("jti")
+    if jti:
+        exp_ts = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc)
+        _blacklist_token(db, jti, "refresh", expires_at)
+
+    cleanup_expired_blacklist(db)
+
+    user_id = payload.get("sub")
+    new_access = create_access_token(user_id, settings)
+    new_refresh = create_refresh_token(user_id, settings)
+    return new_access, new_refresh, payload
 
 
 def get_user_by_email(db: DBSession, email: str) -> Optional[User]:

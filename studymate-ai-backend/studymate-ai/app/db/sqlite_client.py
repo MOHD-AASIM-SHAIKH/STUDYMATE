@@ -70,6 +70,16 @@ class DocumentMetadata(Base):
     user = relationship("User")
 
 
+class TokenBlacklist(Base):
+    __tablename__ = "token_blacklist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    jti = Column(String(36), unique=True, nullable=False, index=True)
+    token_type = Column(String(20), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    blacklisted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 _engine = None
 _SessionLocal: Optional[sessionmaker] = None
 
@@ -95,3 +105,13 @@ def get_db() -> Session:
         yield db
     finally:
         db.close()
+
+
+def cleanup_expired_blacklist(db: Session) -> int:
+    """Remove expired entries from the token blacklist. Returns count removed."""
+    from sqlalchemy import delete
+
+    now = datetime.now(timezone.utc)
+    result = db.execute(delete(TokenBlacklist).where(TokenBlacklist.expires_at <= now))
+    db.commit()
+    return result.rowcount

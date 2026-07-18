@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getMe, loginUser, refreshToken, registerUser } from "../api/auth";
+import { getMe, loginUser, performLogout, refreshToken, registerUser } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -81,6 +81,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    const storedRefresh = localStorage.getItem(REFRESH_KEY);
+    if (storedRefresh) {
+      performLogout(storedRefresh).catch(() => {});
+    }
     clearTokens();
     setUser(null);
   }, []);

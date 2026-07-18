@@ -28,3 +28,7 @@ export async function getMe() {
   const { data } = await apiClient.get("/auth/me");
   return data;
 }
+
+export async function performLogout(refreshToken) {
+  await apiClient.post("/auth/logout", { refresh_token: refreshToken });
+}

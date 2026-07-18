@@ -8,7 +8,7 @@ for the full list of variables a deployment needs to provide.
 from functools import lru_cache
 from typing import List
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -76,6 +76,17 @@ class Settings(BaseSettings):
         if not 0.0 <= v <= 1.0:
             raise ValueError("similarity_threshold must be between 0 and 1")
         return v
+
+    @model_validator(mode="after")
+    def _enforce_production_secret(self) -> "Settings":
+        if (
+            self.environment == "production"
+            and self.jwt_secret_key == "change-me-in-production-use-a-long-random-string"
+        ):
+            raise ValueError(
+                "You MUST set JWT_SECRET_KEY to a unique, random value in production."
+            )
+        return self
 
 
 @lru_cache
