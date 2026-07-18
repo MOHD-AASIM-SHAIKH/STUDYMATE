@@ -16,8 +16,16 @@ from app.services.llm_service import LLMProvider
 logger = get_logger(__name__)
 
 SYSTEM_PROMPT_TEMPLATE = """You are StudyMate AI, an academic assistant that helps students understand their \
-coursework. Answer ONLY using the retrieved context below, which comes from the \
-student's own teacher notes or textbook. Do not use outside knowledge or guess.
+coursework and study effectively. You have two modes:
+
+1. GENERAL CONVERSATION: If the student greets you (hi, hello, hey), asks for study advice, \
+motivation, tips, or wants help making a study plan, you may answer using your general knowledge. \
+These are NOT academic questions that need source material.
+
+2. ACADEMIC / DOCUMENT-GROUNDED: If the student asks about a specific subject, topic, concept, \
+or anything that should be answered from their course materials, you MUST ONLY answer using \
+the retrieved context below (from the student's own teacher notes or textbook). \
+Do not use outside knowledge or guess for academic questions.
 
 === RETRIEVED CONTEXT ===
 {retrieved_chunks}
@@ -28,19 +36,37 @@ Difficulty level: {difficulty_level}
 Response language: {language}
 
 Rules:
-- If context is insufficient, say so clearly instead of guessing.
-- Always end with a "Source:" line citing filename + page/section from metadata.
+- For GENERAL questions (greetings, study planning, motivation): answer warmly and helpfully. \
+Start with "💡" or a friendly greeting. Do NOT cite sources.
+- For ACADEMIC questions: if context is sufficient, provide a thorough, detailed answer with \
+examples. Always end with a "Source:" line citing filename + page/section. If context is \
+insufficient, say "I don't have information about this in your uploaded materials." — do NOT \
+guess or use outside knowledge for academic answers.
 - "beginner": simple language, short sentences, analogies, no jargon.
 - "exam-level": precise terminology, exam-style structure, key definitions/formulas.
 - Respond in the specified language regardless of question language.
 - Never invent citations.
+- Provide thorough, detailed answers. Use examples, analogies, and structured explanations where appropriate.
 - Use the conversation history to understand follow-up questions (e.g., "explain in detail" refers to the previous topic).
 """
 
-NO_CONTEXT_MESSAGE_TEMPLATE = (
-    "I don't have enough information in the provided teacher notes/textbook to answer "
-    "this question. Please ask your teacher, or upload material that covers this topic."
-)
+FALLBACK_PROMPT_TEMPLATE = """You are StudyMate AI, a friendly and helpful study assistant. \
+The student's question was not matched to any specific material in their uploaded documents.
+
+Student question: {user_question}
+Difficulty level: {difficulty_level}
+Response language: {language}
+
+If the student is:
+- Greeting you (hi, hello, hey): respond warmly and ask how you can help with their studies.
+- Asking for study advice, tips, motivation, or a study plan: provide helpful, practical advice \
+based on general best practices. Start with "📚 Study tip:" or "💡 Here's a suggestion:".
+- Asking about time management, productivity, or learning strategies: share general techniques.
+- Asking an academic/factual question about a specific subject: say "I don't have information \
+about this in your uploaded materials. Could you upload relevant notes or ask about a topic \
+you've studied?"
+
+Be warm, encouraging, and helpful. Keep responses concise but thorough. Respond in {language}."""
 
 
 @dataclass
@@ -123,7 +149,14 @@ class RetrievalService:
         chunks = self.retrieve(question, top_k=top_k)
 
         if not chunks:
-            return RAGResult(answer=NO_CONTEXT_MESSAGE_TEMPLATE, sources=[], images=[], sufficient_context=False)
+            fallback_prompt = FALLBACK_PROMPT_TEMPLATE.format(
+                user_question=display_question or question,
+                difficulty_level=difficulty_level,
+                language=language,
+            )
+            with Timer(logger, "LLM fallback generation (no context)"):
+                fallback_answer = self._llm.generate(system_prompt=fallback_prompt, user_prompt=display_question or question, temperature=0.4)
+            return RAGResult(answer=fallback_answer.strip(), sources=[], images=[], sufficient_context=False)
 
         retrieved_text = self._format_chunks_for_prompt(chunks)
         history_text = self._format_history_for_prompt(history or [])
@@ -173,7 +206,15 @@ class RetrievalService:
         chunks = self.retrieve(question, top_k=top_k)
 
         if not chunks:
+            fallback_prompt = FALLBACK_PROMPT_TEMPLATE.format(
+                user_question=display_question or question,
+                difficulty_level=difficulty_level,
+                language=language,
+            )
             yield ("", {"sources": [], "images": [], "sufficient_context": False})
+            with Timer(logger, "LLM fallback streaming generation (no context)"):
+                for token in self._llm.generate_stream(system_prompt=fallback_prompt, user_prompt=display_question or question, temperature=0.4):
+                    yield (token, None)
             return
 
         retrieved_text = self._format_chunks_for_prompt(chunks)

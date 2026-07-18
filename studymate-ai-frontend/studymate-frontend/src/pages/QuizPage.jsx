@@ -59,85 +59,86 @@ export default function QuizPage() {
   const allAnswered = questions && Object.keys(answers).length === questions.length;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 pb-24 sm:pb-6">
-      <div className="mb-6">
-        <h1 className="font-display text-xl text-ink">Quiz Mode</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Test your knowledge with multiple-choice questions generated from your documents.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="rounded-xl border border-line bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <label htmlFor="quiz-topic" className="mb-1.5 block text-sm font-medium text-ink">Topic</label>
-          <input
-            id="quiz-topic"
-            type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder={
-              hasConversation
-                ? "Leave blank to use your current chat as context"
-                : "e.g. Photosynthesis"
-            }
-            className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all"
-          />
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl px-4 py-6 pb-24 sm:pb-6">
+        <div className="mb-6">
+          <h1 className="font-display text-xl text-ink">Quiz Mode</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Test your knowledge with multiple-choice questions generated from your documents.
+          </p>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label htmlFor="quiz-count" className="text-sm text-ink-muted">Questions:</label>
-            <select
-              id="quiz-count"
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="appearance-none rounded-lg border border-line bg-paper px-2.5 py-1.5 pr-7 text-sm text-ink shadow-sm focus:border-accent focus:shadow-glow transition-all"
-            >
-              {[3, 5, 10, 15, 20].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+        <form onSubmit={handleSubmit} className="rounded-xl border border-line bg-surface p-5 shadow-sm">
+          <div className="mb-4">
+            <label htmlFor="quiz-topic" className="mb-1.5 block text-sm font-medium text-ink">Topic</label>
+            <input
+              id="quiz-topic"
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder={
+                hasConversation
+                  ? "Leave blank to use your current chat as context"
+                  : "e.g. Photosynthesis"
+              }
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all"
+            />
           </div>
-          <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />
-          <LanguageSelector value={language} onChange={setLanguage} id="quiz-lang" />
-        </div>
 
-        <button
-          type="submit"
-          disabled={isGenerating || (!topic.trim() && !sessionId)}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-        >
-          {isGenerating ? "Generating..." : "Generate quiz"}
-        </button>
-      </form>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label htmlFor="quiz-count" className="text-sm text-ink-muted">Questions:</label>
+              <select
+                id="quiz-count"
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                className="appearance-none rounded-lg border border-line bg-paper px-2.5 py-1.5 pr-7 text-sm text-ink shadow-sm focus:border-accent focus:shadow-glow transition-all"
+              >
+                {[3, 5, 10, 15, 20].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />
+            <LanguageSelector value={language} onChange={setLanguage} id="quiz-lang" />
+          </div>
 
-      <div className="mt-6 space-y-4">
-        {error && !sufficientContext && <ErrorBanner message={error} />}
+          <button
+            type="submit"
+            disabled={isGenerating || (!topic.trim() && !sessionId)}
+            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            {isGenerating ? "Generating..." : "Generate quiz"}
+          </button>
+        </form>
 
-        {isGenerating && !error && <LoadingDots label="Creating quiz questions..." />}
+        <div className="mt-6 space-y-4">
+          {error && !sufficientContext && <ErrorBanner message={error} />}
 
-        {questions && questions.length > 0 && (
-          <div className="space-y-6 animate-fade-in">
-            {submitted && (
-              <div className={`rounded-xl border p-4 text-center shadow-sm ${
-                score === questions.length
-                  ? "border-success/30 bg-success/5"
-                  : score >= questions.length / 2
-                  ? "border-warning/30 bg-warning/5"
-                  : "border-danger/30 bg-danger/5"
-              }`}>
-                <p className="text-lg font-semibold text-ink">
-                  {score} / {questions.length} correct ({Math.round((score / questions.length) * 100)}%)
-                </p>
-                <p className="text-sm text-ink-muted mt-1">
-                  {score === questions.length
-                    ? "Perfect score! You've mastered this topic."
+          {isGenerating && !error && <LoadingDots label="Creating quiz questions..." />}
+
+          {questions && questions.length > 0 && (
+            <div className="space-y-6 animate-fade-in">
+              {submitted && (
+                <div className={`rounded-xl border p-4 text-center shadow-sm ${
+                  score === questions.length
+                    ? "border-success/30 bg-success/5"
                     : score >= questions.length / 2
-                    ? "Good effort! Review the explanations below."
-                    : "Keep studying! Read the explanations and try again."}
-                </p>
-              </div>
-            )}
+                    ? "border-warning/30 bg-warning/5"
+                    : "border-danger/30 bg-danger/5"
+                }`}>
+                  <p className="text-lg font-semibold text-ink">
+                    {score} / {questions.length} correct ({Math.round((score / questions.length) * 100)}%)
+                  </p>
+                  <p className="text-sm text-ink-muted mt-1">
+                    {score === questions.length
+                      ? "Perfect score! You've mastered this topic."
+                      : score >= questions.length / 2
+                      ? "Good effort! Review the explanations below."
+                      : "Keep studying! Read the explanations and try again."}
+                  </p>
+                </div>
+              )}
 
             {questions.map((q, qIdx) => {
               const selected = answers[qIdx];
@@ -263,7 +264,8 @@ export default function QuizPage() {
               </details>
             )}
           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

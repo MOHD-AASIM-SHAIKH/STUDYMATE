@@ -54,7 +54,7 @@ class GroqProvider(LLMProvider):
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=temperature,
-                max_tokens=1500,
+                max_tokens=4096,
                 timeout=self._timeout,
             )
             return completion.choices[0].message.content or ""
@@ -73,7 +73,7 @@ class GroqProvider(LLMProvider):
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=temperature,
-                max_tokens=1500,
+                max_tokens=4096,
                 timeout=self._timeout,
                 stream=True,
             )

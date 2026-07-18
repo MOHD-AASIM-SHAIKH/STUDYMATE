@@ -21,5 +21,5 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <div className="animate-fade-in h-full">{children}</div>;
+  return <div className="animate-fade-in flex-1 flex flex-col overflow-hidden min-h-0">{children}</div>;
 }

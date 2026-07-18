@@ -11,9 +11,7 @@ from app.services.retrieval_service import RetrievalService
 
 logger = get_logger(__name__)
 
-FLASHCARD_SYSTEM_PROMPT_TEMPLATE = """You are StudyMate AI, generating flashcards to help a student study \
-based ONLY on the retrieved context below (their teacher notes/textbook). \
-Do not use outside knowledge or guess.
+FLASHCARD_SYSTEM_PROMPT_TEMPLATE = """You are StudyMate AI, generating flashcards to help a student study.
 
 === RETRIEVED CONTEXT ===
 {retrieved_chunks}
@@ -38,14 +36,35 @@ Example:
 ]
 
 Rules:
-- If context is insufficient, respond with [] (empty array).
+- If the provided context above has enough material, use it to make flashcards grounded in the student's materials.
+- If the context is insufficient, you MAY generate flashcards from general knowledge to help the student learn. \
+Prefer to use the context when available.
+- Vary the topics across the cards — do NOT repeat the same subtopic for every card. Cover different aspects of the topic.
 - "beginner": simple language, definitions, basic concepts.
 - "exam-level": precise terminology, formulas, detailed explanations.
 - Respond in the specified language regardless of source language.
-- Never invent information — every card must come from the provided context.
+- Never invent citations — if using general knowledge, set "topic" to "General Knowledge".
 """
 
-NO_CONTEXT_MESSAGE = ""
+FALLBACK_FLASHCARD_PROMPT_TEMPLATE = """You are StudyMate AI, generating flashcards to help a student study \
+a topic using your general knowledge (no specific source material was available).
+
+TOPIC: {topic}
+Number of cards: {count}
+Difficulty level: {difficulty_level}
+Response language: {language}
+
+Generate exactly {count} flashcards as a JSON array. Each flashcard must have:
+- "front": a concise question, term, or prompt
+- "back": a clear answer or definition
+- "topic": the specific subtopic this card belongs to
+
+Respond with ONLY the JSON array, no extra text or markdown formatting.
+Rules:
+- Cover different aspects of the topic — do NOT repeat the same subtopic.
+- Vary the topics across cards.
+- Set "topic" to the specific subtopic for each card.
+- If you cannot generate meaningful cards on this topic, respond with []."""
 
 
 class FlashcardService:
@@ -65,9 +84,25 @@ class FlashcardService:
         if not query:
             return [], [], False
 
-        chunks = self._retrieval.retrieve(query, top_k=6)
+        chunks = self._retrieval.retrieve(query, top_k=8)
+
         if not chunks:
-            return [], [], False
+            fallback_prompt = FALLBACK_FLASHCARD_PROMPT_TEMPLATE.format(
+                topic=query,
+                count=count,
+                difficulty_level=difficulty_level,
+                language=language,
+            )
+            with Timer(logger, "Flashcard fallback LLM generation (no context)"):
+                raw = self._llm.generate(
+                    system_prompt=fallback_prompt,
+                    user_prompt=f"Generate {count} flashcards on: {query}",
+                    temperature=0.7,
+                )
+            flashcards = self._parse_flashcards(raw.strip())
+            if not flashcards:
+                return [], [], False
+            return flashcards, [], False
 
         retrieved_text = self._retrieval._format_chunks_for_prompt(chunks)
         history_block = self._format_history(history)
@@ -85,7 +120,7 @@ class FlashcardService:
             raw = self._llm.generate(
                 system_prompt=system_prompt,
                 user_prompt=f"Generate {count} flashcards on: {query}",
-                temperature=0.3,
+                temperature=0.7,
             )
 
         flashcards = self._parse_flashcards(raw.strip())

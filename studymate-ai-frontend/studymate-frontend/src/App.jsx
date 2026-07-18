@@ -30,7 +30,7 @@ export default function App() {
     <div className="flex h-screen flex-col bg-paper sm:flex-row">
       <Nav />
       <OnboardingOverlay />
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <Routes>
           <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />

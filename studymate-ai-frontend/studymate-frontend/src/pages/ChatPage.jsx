@@ -64,7 +64,6 @@ export default function ChatPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -88,14 +87,14 @@ export default function ChatPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [sidebarOpen, input, messages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sidebarOpen, input, messages]);
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full w-full overflow-hidden">
       <ChatHistorySidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex items-center justify-between border-b border-line px-4 py-2 sm:hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-2 sm:hidden shrink-0">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -113,7 +112,6 @@ export default function ChatPage() {
             onClick={handleExport}
             disabled={messages.length === 0}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-line/50 disabled:opacity-30"
-            title="Export chat"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -123,8 +121,8 @@ export default function ChatPage() {
           </button>
         </div>
 
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 pb-24 pt-4 sm:pb-4 sm:pt-6">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="flex flex-1 flex-col overflow-hidden px-4 pt-3 pb-2 sm:px-6 sm:pt-4">
+          <div className="mb-3 flex shrink-0 items-center justify-between sm:mb-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -140,52 +138,49 @@ export default function ChatPage() {
               </button>
               <div>
                 <h1 className="font-display text-xl text-ink">Chat</h1>
-                <p className="text-sm text-ink-muted hidden sm:block">Ask questions grounded in your course material</p>
+                <p className="text-xs text-ink-muted hidden sm:block">Ask questions grounded in your course material</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={messages.length === 0}
-                className="hidden sm:flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:border-accent disabled:opacity-30 transition-all"
-                title="Export chat (Cmd+E)"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={messages.length === 0}
+              className="hidden sm:flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:border-accent disabled:opacity-30 transition-all shrink-0"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export
+            </button>
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-line pb-4">
+          <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2 border-b border-line pb-3 sm:mb-4 sm:gap-3 sm:pb-4">
             <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />
             <LanguageSelector value={language} onChange={setLanguage} />
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto py-2 scroll-smooth">
+          <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4" style={{ scrollBehavior: "smooth" }}>
             {isLoadingHistory && (
-              <div className="flex items-center justify-center py-16">
+              <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
-                  <span className="ml-1 text-sm text-ink-muted">Restoring your conversation...</span>
+                  <span className="ml-1 text-sm text-ink-muted">Restoring...</span>
                 </div>
               </div>
             )}
             {!isLoadingHistory && messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
                     <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
                   </svg>
                 </div>
-                <p className="font-display text-lg text-ink">No questions yet</p>
-                <p className="mt-1 text-sm text-ink-muted">Ask something from your uploaded notes to get started.</p>
+                <p className="font-display text-base text-ink">No questions yet</p>
+                <p className="mt-1 text-xs text-ink-muted text-center">Ask a question, say hi, or ask for study advice to get started.</p>
               </div>
             )}
             {messages.map((m, idx) => (
@@ -193,13 +188,8 @@ export default function ChatPage() {
                 <ChatBubble message={m} />
                 {!m.streaming && m.role === "assistant" && m.content && !m.error && (
                   <div className="mt-1 flex items-center gap-2 pl-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={() => regenerate(m)}
-                      className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors"
-                      title="Regenerate"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <button type="button" onClick={() => regenerate(m)} className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="23 4 23 10 17 10" />
                         <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
                       </svg>
@@ -209,13 +199,8 @@ export default function ChatPage() {
                 )}
                 {!m.streaming && m.role === "student" && m.content && (
                   <div className="mt-1 flex items-center gap-2 justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={() => handleEditStart(idx, m.content)}
-                      className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors"
-                      title="Edit message"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <button type="button" onClick={() => handleEditStart(idx, m.content)} className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
@@ -223,9 +208,8 @@ export default function ChatPage() {
                     </button>
                   </div>
                 )}
-
                 {editingIndex === idx && (
-                  <div className="mt-2 flex gap-2 animate-fade-slide-in">
+                  <div className="mt-2 flex gap-2">
                     <input
                       type="text"
                       value={editValue}
@@ -237,68 +221,42 @@ export default function ChatPage() {
                       className="flex-1 rounded-lg border border-accent bg-surface px-3 py-2 text-sm text-ink outline-none shadow-sm"
                       autoFocus
                     />
-                    <button
-                      type="button"
-                      onClick={handleEditSubmit}
-                      className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-white"
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEditingIndex(null); setEditValue(""); }}
-                      className="rounded-full border border-line px-3 py-1.5 text-sm font-medium text-ink-muted"
-                    >
-                      Cancel
-                    </button>
+                    <button type="button" onClick={handleEditSubmit} className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-white">Save</button>
+                    <button type="button" onClick={() => { setEditingIndex(null); setEditValue(""); }} className="rounded-full border border-line px-3 py-1.5 text-sm font-medium text-ink-muted">Cancel</button>
                   </div>
                 )}
               </div>
             ))}
             {isSending && !messages.some((m) => m.streaming) && (
-              <div className="flex justify-start animate-fade-slide-in">
+              <div className="flex justify-start">
                 <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 shadow-sm">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             )}
             <div ref={scrollRef} />
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-3 flex items-end gap-2">
-            <label htmlFor="chat-input" className="sr-only">Ask a question</label>
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-3 flex shrink-0 items-end gap-2 sm:mt-4">
             <div className="relative flex-1">
               <textarea
                 ref={inputRef}
-                id="chat-input"
                 rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask a question about your notes... (↑ to edit last)"
-                className="max-h-32 w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 pr-12 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all shadow-sm"
+                placeholder="Ask a question... (↑ to edit last)"
+                className="max-h-28 w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 pr-12 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all shadow-sm"
               />
             </div>
             {isSending ? (
-              <button
-                type="button"
-                onClick={cancelStream}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/90 transition-all shadow-sm"
-                title="Stop generating"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
+              <button type="button" onClick={cancelStream} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/90 transition-all shadow-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
               </button>
             ) : (
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-                title="Send"
-              >
+              <button type="submit" disabled={!input.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -307,10 +265,10 @@ export default function ChatPage() {
             )}
           </form>
 
-          <div className="mt-2 text-center text-[10px] text-ink-muted/50">
-            <kbd className="rounded border border-line px-1 font-mono text-[9px]">Cmd+K</kbd> toggle sidebar ·{" "}
+          <div className="mt-2 text-center text-[10px] text-ink-muted/40 shrink-0 hidden sm:block">
+            <kbd className="rounded border border-line px-1 font-mono text-[9px]">Cmd+K</kbd> sidebar ·{" "}
             <kbd className="rounded border border-line px-1 font-mono text-[9px]">Cmd+E</kbd> export ·{" "}
-            <kbd className="rounded border border-line px-1 font-mono text-[9px]">↑</kbd> edit last
+            <kbd className="rounded border border-line px-1 font-mono text-[9px]">↑</kbd> edit
           </div>
         </div>
       </div>
