@@ -93,6 +93,18 @@ export async function generateNote({ topic, sessionId, difficultyLevel, language
   return data;
 }
 
+/** POST /flashcards */
+export async function generateFlashcards({ topic, sessionId, count, difficultyLevel, language }) {
+  const { data } = await apiClient.post("/flashcards", {
+    topic: topic || null,
+    session_id: sessionId || null,
+    count: count || 5,
+    difficulty_level: difficultyLevel,
+    language,
+  });
+  return data;
+}
+
 /** GET /sessions/:id/history */
 export async function getSessionHistory(sessionId, limit = 50) {
   const { data } = await apiClient.get(`/sessions/${encodeURIComponent(sessionId)}/history`, {

@@ -45,6 +45,7 @@ def ask_question(
 
     chroma: ChromaClient = ChromaClient.get_instance()
     cache_key = cache.make_key(
+        session_id,
         payload.question.strip().lower(),
         payload.difficulty_level,
         payload.language.lower(),
@@ -68,15 +69,9 @@ def ask_question(
             latency_ms=round((time.perf_counter() - start) * 1000, 2),
         )
 
-    history = session_service.get_history(session_id, limit=5)
+    history = session_service.get_history(session_id, limit=10)
 
-    # For follow-up questions, combine the last question with the current one
-    # so retrieval finds relevant chunks even for vague follow-ups like "explain in detail"
-    retrieval_query = payload.question
-    if history:
-        last_q = history[-1].question
-        if len(payload.question.split()) < 5:  # short follow-up
-            retrieval_query = f"{last_q} {payload.question}"
+    retrieval_query = _build_retrieval_query(payload.question, history)
 
     result = retrieval_service.answer_question(
         question=retrieval_query,
@@ -126,13 +121,9 @@ def ask_question_stream(
 ) -> StreamingResponse:
     """Stream the answer token-by-token via Server-Sent Events."""
     session_id = session_service.get_or_create(payload.session_id, user_id=current_user.id)
-    history = session_service.get_history(session_id, limit=5)
+    history = session_service.get_history(session_id, limit=10)
 
-    retrieval_query = payload.question
-    if history:
-        last_q = history[-1].question
-        if len(payload.question.split()) < 5:
-            retrieval_query = f"{last_q} {payload.question}"
+    retrieval_query = _build_retrieval_query(payload.question, history)
 
     def event_stream():
         full_answer_parts = []
@@ -177,6 +168,20 @@ def ask_question_stream(
         yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+def _build_retrieval_query(question: str, history: list) -> str:
+    if not history:
+        return question
+    words = question.split()
+    if len(words) >= 5:
+        return question
+    last_q = history[-1].question
+    context = f"{last_q} {question}"
+    if len(history) >= 2:
+        second_last_q = history[-2].question
+        context = f"{second_last_q} {last_q} {question}"
+    return context
 
 
 

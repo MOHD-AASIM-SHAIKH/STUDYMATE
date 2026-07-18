@@ -17,6 +17,7 @@ from app.db.sqlite_client import get_db
 from app.services.cache_service import LRUCache, get_cache_service
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService, get_embedding_service
+from app.services.flashcard_service import FlashcardService
 from app.services.llm_service import LLMProvider, get_llm_provider
 from app.services.notes_service import NotesService
 from app.services.retrieval_service import RetrievalService
@@ -45,6 +46,13 @@ def get_notes_service_dep(
     llm_provider: LLMProvider = Depends(get_llm_provider),
 ) -> NotesService:
     return NotesService(retrieval_service, llm_provider)
+
+
+def get_flashcard_service_dep(
+    retrieval_service: RetrievalService = Depends(get_retrieval_service_dep),
+    llm_provider: LLMProvider = Depends(get_llm_provider),
+) -> FlashcardService:
+    return FlashcardService(retrieval_service, llm_provider)
 
 
 def get_session_service_dep(db: DBSession = Depends(get_db)) -> SessionService:

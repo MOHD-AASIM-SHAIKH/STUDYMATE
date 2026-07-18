@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import Nav from "./components/Nav";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChatPage from "./pages/ChatPage";
+import FlashcardsPage from "./pages/FlashcardsPage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
 import NotesPage from "./pages/NotesPage";
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
+          <Route path="/flashcards" element={<ProtectedRoute><FlashcardsPage /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         </Routes>

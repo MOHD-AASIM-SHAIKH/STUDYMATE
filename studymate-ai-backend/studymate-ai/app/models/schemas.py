@@ -154,6 +154,30 @@ class SessionHistoryResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Flashcards
+# ---------------------------------------------------------------------------
+class Flashcard(BaseModel):
+    front: str = Field(..., description="The question or term on the front of the card")
+    back: str = Field(..., description="The answer or definition on the back")
+    source: Optional[SourceCitation] = None
+    topic: str = ""
+
+
+class FlashcardRequest(BaseModel):
+    topic: Optional[str] = Field(default=None, max_length=300)
+    session_id: Optional[str] = Field(default=None)
+    count: int = Field(default=5, ge=1, le=20, description="Number of flashcards to generate")
+    difficulty_level: str = Field(default="beginner", max_length=50)
+    language: str = Field(default="English", max_length=50)
+
+
+class FlashcardResponse(BaseModel):
+    flashcards: List[Flashcard]
+    sources: List[SourceCitation]
+    sufficient_context: bool
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 class HealthResponse(BaseModel):
