@@ -23,6 +23,13 @@ export default function ChatPage() {
     sendMessage(question);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col px-4 pb-24 pt-4 sm:pb-4 sm:pt-6">
       <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -36,9 +43,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto py-2">
+      <div className="flex-1 space-y-4 overflow-y-auto py-2 scroll-smooth">
         {isLoadingHistory && (
-          <div className="mt-16 flex justify-center">
+          <div className="flex items-center justify-center py-16">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
               <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
@@ -48,20 +55,25 @@ export default function ChatPage() {
           </div>
         )}
         {!isLoadingHistory && messages.length === 0 && (
-          <div className="mt-16 text-center text-ink-muted">
+          <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+                <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+              </svg>
+            </div>
             <p className="font-display text-lg text-ink">No questions yet</p>
-            <p className="mt-1 text-sm">Ask something from your uploaded notes to get started.</p>
+            <p className="mt-1 text-sm text-ink-muted">Ask something from your uploaded notes to get started.</p>
           </div>
         )}
         {messages.map((m) => (
           <ChatBubble key={m.id} message={m} />
         ))}
         {isSending && !messages.some((m) => m.streaming) && (
-          <div className="flex justify-start">
-            <div className="flex items-center gap-1.5 rounded-card rounded-tl-sm border border-line bg-surface px-4 py-3">
-              <TypingDot delay="0ms" />
-              <TypingDot delay="150ms" />
-              <TypingDot delay="300ms" />
+          <div className="flex justify-start animate-fade-slide-in">
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 shadow-sm">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
             </div>
           </div>
         )}
@@ -69,50 +81,43 @@ export default function ChatPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="mt-3 flex items-end gap-2">
-        <label htmlFor="chat-input" className="sr-only">
-          Ask a question
-        </label>
-        <textarea
-          id="chat-input"
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-          placeholder="Ask a question about your notes..."
-          className="max-h-32 flex-1 resize-none rounded-card border border-line bg-surface px-4 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent"
-        />
+        <label htmlFor="chat-input" className="sr-only">Ask a question</label>
+        <div className="relative flex-1">
+          <textarea
+            id="chat-input"
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question about your notes..."
+            className="max-h-32 w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 pr-12 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all shadow-sm"
+          />
+        </div>
         {isSending ? (
           <button
             type="button"
             onClick={cancelStream}
-            className="rounded-full bg-danger px-4 py-2.5 text-sm font-medium text-white"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/90 transition-all shadow-sm"
+            title="Stop generating"
           >
-            Stop
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
           </button>
         ) : (
           <button
             type="submit"
             disabled={!input.trim()}
-            className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+            title="Send"
           >
-            Send
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
           </button>
         )}
       </form>
     </div>
-  );
-}
-
-function TypingDot({ delay }) {
-  return (
-    <span
-      className="h-1.5 w-1.5 animate-bounce rounded-full bg-ink-muted"
-      style={{ animationDelay: delay }}
-    />
   );
 }

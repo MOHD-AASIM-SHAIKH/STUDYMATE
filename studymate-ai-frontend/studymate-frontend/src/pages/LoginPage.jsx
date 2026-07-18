@@ -31,23 +31,29 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm animate-fade-slide-in">
         <div className="mb-8 text-center">
-          <h1 className="font-display text-2xl text-ink">StudyMate AI</h1>
-          <p className="mt-1 text-sm text-ink-muted">Sign in to your account</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-white text-lg font-bold shadow-sm">
+            S
+          </div>
+          <h1 className="font-display text-2xl text-ink">Welcome back</h1>
+          <p className="mt-1 text-sm text-ink-muted">Sign in to your StudyMate account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-card border border-line bg-surface p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-line bg-surface p-6 shadow-sm">
           {error && (
-            <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            <div className="flex items-center gap-2 rounded-lg border border-danger/20 bg-danger-soft px-3.5 py-2.5 text-sm text-danger">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
-              Email
-            </label>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink">Email</label>
             <input
               id="email"
               type="email"
@@ -55,15 +61,13 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-card border border-line bg-paper px-3 py-2 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent"
+              className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink">
-              Password
-            </label>
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-ink">Password</label>
             <input
               id="password"
               type="password"
@@ -71,7 +75,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-card border border-line bg-paper px-3 py-2 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent"
+              className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all"
               placeholder="••••••••"
             />
           </div>
@@ -79,14 +83,21 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
           >
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin-slow">
+                  <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8" />
+                </svg>
+                Signing in...
+              </span>
+            ) : "Sign in"}
           </button>
 
           <p className="text-center text-sm text-ink-muted">
             Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-medium text-accent hover:underline">
+            <Link to="/register" className="font-medium text-accent hover:text-accent/80 transition-colors">
               Create one
             </Link>
           </p>

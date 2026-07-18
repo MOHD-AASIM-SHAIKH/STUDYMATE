@@ -15,20 +15,24 @@ export default function Nav() {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <nav
         aria-label="Main navigation"
-        className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface p-4 sm:flex"
+        className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface/80 backdrop-blur-sm p-4 sm:flex"
       >
         <div className="mb-6 flex items-center gap-2 px-2">
-          <span className="font-display text-xl font-semibold text-ink">StudyMate</span>
-          <span className="rounded-full bg-accent-soft/30 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide text-ink-muted">
-            AI
-          </span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white text-sm font-bold">
+            S
+          </div>
+          <div>
+            <span className="font-display text-lg font-semibold text-ink">StudyMate</span>
+            <span className="ml-1.5 rounded-full bg-accent-soft/20 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-ink-muted">
+              AI
+            </span>
+          </div>
         </div>
 
         {user && (
-          <div className="mb-4 rounded-card border border-line bg-paper px-3 py-2">
+          <div className="mb-4 rounded-card border border-line bg-paper/80 px-3 py-2.5">
             <p className="truncate text-sm font-medium text-ink">{user.display_name}</p>
             <p className="truncate text-xs text-ink-muted">{user.email}</p>
           </div>
@@ -41,19 +45,24 @@ export default function Nav() {
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive ? "bg-accent text-white" : "text-ink-muted hover:bg-line/50 hover:text-ink"
+                  `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-ink-muted hover:bg-accent/8 hover:text-ink"
                   }`
                 }
               >
                 <item.icon />
-                {item.label}
+                <span>{item.label}</span>
+                {({ isActive }) =>
+                  isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/60" />
+                }
               </NavLink>
             </li>
           ))}
         </ul>
 
-        <div className="mt-auto space-y-2 px-2 pt-4">
+        <div className="mt-auto space-y-3 px-2 pt-4">
           <div className="flex items-center justify-between">
             <span className="text-xs text-ink-muted">Theme</span>
             <ThemeToggle />
@@ -61,18 +70,19 @@ export default function Nav() {
           <button
             type="button"
             onClick={logout}
-            className="w-full rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted hover:bg-danger/10 hover:text-danger transition-colors"
+            className="w-full rounded-lg px-3 py-2 text-xs font-medium text-ink-muted hover:bg-danger-soft hover:text-danger transition-all"
           >
             Sign out
           </button>
         </div>
       </nav>
 
-      {/* Mobile top bar */}
-      <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 sm:hidden">
-        <div className="min-w-0 flex-1">
-          <span className="font-display text-lg font-semibold text-ink">StudyMate AI</span>
-          {user && <span className="ml-2 text-xs text-ink-muted">{user.display_name}</span>}
+      <header className="flex items-center justify-between border-b border-line bg-surface/80 backdrop-blur-sm px-4 py-3 sm:hidden">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-white text-xs font-bold">
+            S
+          </div>
+          <span className="font-display text-base font-semibold text-ink">StudyMate</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -86,10 +96,9 @@ export default function Nav() {
         </div>
       </header>
 
-      {/* Mobile bottom tab bar */}
       <nav
         aria-label="Main navigation"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface/90 backdrop-blur-sm sm:hidden"
       >
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -97,13 +106,13 @@ export default function Nav() {
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
                 isActive ? "text-accent" : "text-ink-muted"
               }`
             }
           >
             <item.icon />
-            {item.label}
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
@@ -113,14 +122,22 @@ export default function Nav() {
 
 function ChatIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+    </svg>
+  );
+}
+function FlashcardIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 9h10M7 13h6M7 17h3" />
     </svg>
   );
 }
 function LibraryIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
     </svg>
@@ -128,24 +145,15 @@ function LibraryIcon() {
 }
 function NotesIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
       <path d="M14 2v6h6M9 13h6M9 17h6" />
     </svg>
   );
 }
-function FlashcardIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M7 9h10M7 13h6M7 17h3" />
-    </svg>
-  );
-}
-
 function HistoryIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <path d="M3 3v5h5" />
       <path d="M3.05 13A9 9 0 106 5.3L3 8" />
       <path d="M12 7v5l4 2" />

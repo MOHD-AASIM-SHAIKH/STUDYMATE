@@ -3,6 +3,7 @@ import DifficultyToggle from "../components/DifficultyToggle";
 import LanguageSelector from "../components/LanguageSelector";
 import ErrorBanner from "../components/ErrorBanner";
 import SourceCitation from "../components/SourceCitation";
+import { LoadingDots } from "../components/LoadingSkeleton";
 import { useFlashcards } from "../hooks/useFlashcards";
 import { useSession } from "../context/SessionContext";
 
@@ -23,32 +24,18 @@ export default function FlashcardsPage() {
     generate({ topic: topic.trim(), count });
   };
 
-  const handleFlip = () => setFlipped((f) => !f);
-
-  const goNext = () => {
-    if (currentIndex < (flashcards?.length || 0) - 1) {
-      setCurrentIndex((i) => i + 1);
-      setFlipped(false);
-    }
-  };
-
-  const goPrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((i) => i - 1);
-      setFlipped(false);
-    }
-  };
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 pb-24 sm:pb-6">
-      <h1 className="font-display text-xl text-ink">Flashcards</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Generate study flashcards from your documents. Click a card to flip it.
-      </p>
+      <div className="mb-6">
+        <h1 className="font-display text-xl text-ink">Flashcards</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Generate study flashcards from your documents. Click a card to flip it.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-4 rounded-card border border-line bg-surface p-4">
-        <div>
-          <label htmlFor="flashcard-topic" className="mb-1 block text-sm font-medium text-ink">Topic</label>
+      <form onSubmit={handleSubmit} className="rounded-xl border border-line bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <label htmlFor="flashcard-topic" className="mb-1.5 block text-sm font-medium text-ink">Topic</label>
           <input
             id="flashcard-topic"
             type="text"
@@ -59,18 +46,18 @@ export default function FlashcardsPage() {
                 ? "Leave blank to use your current chat as context"
                 : "e.g. Photosynthesis"
             }
-            className="w-full rounded-card border border-line bg-paper px-3 py-2 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent"
+            className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label htmlFor="card-count" className="text-sm text-ink-muted">Cards:</label>
             <select
               id="card-count"
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
-              className="rounded-card border border-line bg-paper px-2 py-1.5 text-sm text-ink"
+              className="appearance-none rounded-lg border border-line bg-paper px-2.5 py-1.5 pr-7 text-sm text-ink shadow-sm focus:border-accent focus:shadow-glow transition-all"
             >
               {[3, 5, 10, 15, 20].map((n) => (
                 <option key={n} value={n}>{n}</option>
@@ -84,33 +71,31 @@ export default function FlashcardsPage() {
         <button
           type="submit"
           disabled={isGenerating || (!topic.trim() && !sessionId)}
-          className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
         >
           {isGenerating ? "Generating..." : "Generate flashcards"}
         </button>
         {!topic.trim() && !sessionId && (
-          <p className="text-xs text-ink-muted">
+          <p className="mt-2 text-xs text-ink-muted">
             Enter a topic, or ask a question in Chat first to use that conversation as context.
           </p>
         )}
       </form>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
         {error && <ErrorBanner message={error} />}
 
-        {isGenerating && !error && (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
-              <span className="ml-1 text-sm text-ink-muted">Creating flashcards...</span>
-            </div>
-          </div>
-        )}
+        {isGenerating && !error && <LoadingDots label="Creating flashcards..." />}
 
         {!isGenerating && flashcards && !sufficientContext && (
-          <div className="rounded-card border border-line bg-surface p-6 text-center">
+          <div className="rounded-xl border border-line bg-surface p-8 text-center shadow-sm animate-fade-in">
+            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-ink-muted/10">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-ink-muted">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
             <p className="text-sm text-ink-muted">
               Not enough material was found to generate flashcards on this topic. Try uploading more source
               documents or a different topic.
@@ -119,7 +104,7 @@ export default function FlashcardsPage() {
         )}
 
         {!isGenerating && flashcards && sufficientContext && flashcards.length === 0 && (
-          <div className="rounded-card border border-line bg-surface p-6 text-center">
+          <div className="rounded-xl border border-line bg-surface p-8 text-center shadow-sm animate-fade-in">
             <p className="text-sm text-ink-muted">
               Could not parse flashcards from the generated content. Try again with a different topic.
             </p>
@@ -127,70 +112,94 @@ export default function FlashcardsPage() {
         )}
 
         {!isGenerating && flashcards && sufficientContext && flashcards.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in">
             <div className="flex items-center justify-between">
               <p className="text-sm text-ink-muted">
-                Card {currentIndex + 1} of {flashcards.length}
+                Card <span className="font-medium text-ink">{currentIndex + 1}</span> of {flashcards.length}
               </p>
-              <p className="text-xs text-ink-muted">{flashcards[currentIndex]?.topic}</p>
+              {flashcards[currentIndex]?.topic && (
+                <span className="rounded-full border border-line/60 bg-surface px-2.5 py-0.5 text-[11px] font-mono text-ink-muted">
+                  {flashcards[currentIndex].topic}
+                </span>
+              )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleFlip}
-              className="w-full cursor-pointer text-left"
+            <div
+              className="group relative mx-auto w-full cursor-pointer"
+              style={{ perspective: "1000px", minHeight: "220px" }}
+              onClick={() => setFlipped((f) => !f)}
             >
-              <div className="relative min-h-[200px] w-full">
+              <div
+                className="relative h-full w-full transition-all duration-500"
+                style={{
+                  transformStyle: "preserve-3d",
+                  transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                }}
+              >
                 <div
-                  className={`w-full rounded-card border-2 bg-surface p-6 shadow-sm transition-all duration-300 ${
-                    flipped
-                      ? "border-accent/40"
-                      : "border-line hover:border-accent/20"
-                  }`}
+                  className="absolute inset-0 rounded-xl border-2 bg-surface p-6 shadow-sm"
+                  style={{ backfaceVisibility: "hidden" }}
                 >
-                  {flipped ? (
-                    <div>
-                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-accent">Answer</p>
-                      <p className="text-[15px] text-ink leading-relaxed whitespace-pre-wrap">
-                        {flashcards[currentIndex]?.back}
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Question</p>
-                      <p className="text-[15px] text-ink font-medium leading-relaxed">
-                        {flashcards[currentIndex]?.front}
-                      </p>
-                      <p className="mt-4 text-xs text-ink-muted">Click anywhere to flip</p>
-                    </div>
-                  )}
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-ink-muted/60">Question</p>
+                  <p className="text-base font-medium text-ink leading-relaxed">
+                    {flashcards[currentIndex]?.front}
+                  </p>
+                  <p className="absolute bottom-4 left-0 right-0 text-center text-[11px] text-ink-muted/40 group-hover:text-ink-muted/70 transition-colors">
+                    Click to reveal answer
+                  </p>
+                </div>
+
+                <div
+                  className="absolute inset-0 rounded-xl border-2 border-accent/20 bg-accent/5 p-6 shadow-sm"
+                  style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                >
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-accent/70">Answer</p>
+                  <p className="text-base text-ink leading-relaxed">
+                    {flashcards[currentIndex]?.back}
+                  </p>
+                  <p className="absolute bottom-4 left-0 right-0 text-center text-[11px] text-ink-muted/40 group-hover:text-ink-muted/70 transition-colors">
+                    Click to flip back
+                  </p>
                 </div>
               </div>
-            </button>
+            </div>
 
             <div className="flex items-center justify-center gap-4">
               <button
                 type="button"
-                onClick={goPrev}
+                onClick={(e) => { e.stopPropagation(); if (currentIndex > 0) { setCurrentIndex((i) => i - 1); setFlipped(false); } }}
                 disabled={currentIndex === 0}
-                className="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink hover:border-accent hover:text-accent disabled:opacity-30"
+                className="rounded-full border border-line px-5 py-2 text-sm font-medium text-ink hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
               >
-                Previous
+                <span className="flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                  Previous
+                </span>
               </button>
               <button
                 type="button"
-                onClick={goNext}
+                onClick={(e) => { e.stopPropagation(); if (currentIndex < flashcards.length - 1) { setCurrentIndex((i) => i + 1); setFlipped(false); } }}
                 disabled={currentIndex === flashcards.length - 1}
-                className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-30"
+                className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
               >
-                Next
+                <span className="flex items-center gap-1.5">
+                  Next
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </span>
               </button>
             </div>
 
             {sources.length > 0 && (
-              <details className="rounded-card border border-line">
-                <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-ink-muted hover:text-ink">
-                  Sources ({sources.length})
+              <details className="group rounded-xl border border-line overflow-hidden shadow-sm">
+                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-ink-muted hover:text-ink transition-colors">
+                  <span>Sources ({sources.length})</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </summary>
                 <div className="border-t border-line px-4 py-3">
                   <SourceCitation sources={sources} />

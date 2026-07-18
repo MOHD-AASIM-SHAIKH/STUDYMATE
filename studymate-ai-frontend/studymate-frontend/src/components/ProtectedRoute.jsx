@@ -9,9 +9,9 @@ export default function ProtectedRoute({ children }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-paper">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
+          <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+          <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+          <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
         </div>
       </div>
     );
@@ -21,5 +21,5 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children;
+  return <div className="animate-fade-in h-full">{children}</div>;
 }

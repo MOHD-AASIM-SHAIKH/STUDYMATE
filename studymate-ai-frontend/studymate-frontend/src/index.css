@@ -3,25 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --paper: #f5f6f1;
+  --paper: #f0f1ec;
   --surface: #ffffff;
-  --ink: #202b26;
+  --ink: #1a241f;
   --ink-muted: #5b6660;
   --accent: #3b6e5d;
   --accent-soft: #e8b04b;
-  --line: #dad6c9;
+  --accent-glow: rgba(59, 110, 93, 0.12);
+  --line: #d6d3c8;
   --danger: #b54b3a;
+  --danger-soft: rgba(181, 75, 58, 0.08);
 }
 
 .dark {
-  --paper: #141d19;
-  --surface: #1b2621;
-  --ink: #e9e6dc;
-  --ink-muted: #a7b0a9;
+  --paper: #111814;
+  --surface: #19221d;
+  --ink: #e6e4db;
+  --ink-muted: #9ba69e;
   --accent: #7fb69e;
   --accent-soft: #e8b04b;
-  --line: #2a3830;
-  --danger: #e08772;
+  --accent-glow: rgba(127, 182, 158, 0.12);
+  --line: #28342d;
+  --danger: #d98a77;
+  --danger-soft: rgba(217, 138, 119, 0.08);
 }
 
 * {
@@ -39,7 +43,8 @@ body {
   color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -53,16 +58,30 @@ body {
   }
 }
 
-::selection {
-  background-color: var(--accent-soft);
-  color: #202b26;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
 }
 
-/* Visible keyboard focus ring, accessible on both themes */
+::selection {
+  background-color: var(--accent-soft);
+  color: #1a241f;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .skeleton {
@@ -70,7 +89,9 @@ body {
   background-size: 400px 100%;
 }
 
-/* Markdown content rendered from AI answers / study notes */
+.prose-studymate {
+  line-height: 1.7;
+}
 .prose-studymate h1 {
   font-family: "Source Serif 4", Georgia, serif;
   font-size: 1.5rem;
@@ -94,29 +115,66 @@ body {
 }
 .prose-studymate p {
   margin: 0.5rem 0;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 .prose-studymate ul,
 .prose-studymate ol {
   margin: 0.5rem 0 0.5rem 1.25rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 .prose-studymate li {
   margin: 0.2rem 0;
 }
 .prose-studymate strong {
   font-weight: 600;
+  color: var(--ink);
 }
 .prose-studymate code {
   font-family: "IBM Plex Mono", monospace;
   background: var(--line);
-  padding: 0.1rem 0.3rem;
+  padding: 0.1rem 0.35rem;
   border-radius: 4px;
   font-size: 0.85em;
+  color: var(--ink);
+}
+.prose-studymate pre {
+  background: var(--line);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.prose-studymate pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
 }
 .prose-studymate blockquote {
   border-left: 3px solid var(--accent);
   padding-left: 0.75rem;
   color: var(--ink-muted);
   margin: 0.5rem 0;
+}
+.prose-studymate a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-studymate a:hover {
+  opacity: 0.8;
+}
+.prose-studymate table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+.prose-studymate th,
+.prose-studymate td {
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.prose-studymate th {
+  background: var(--line);
+  font-weight: 600;
 }
