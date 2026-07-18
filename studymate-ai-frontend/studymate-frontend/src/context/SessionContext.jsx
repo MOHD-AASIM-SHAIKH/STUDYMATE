@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { getSessionHistory, listSessions, deleteSession as apiDelete, renameSession as apiRename } from "../api/endpoints";
 import { useAuth } from "./AuthContext";
 
@@ -47,6 +47,22 @@ export function SessionProvider({ children }) {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [fetchingSessions, setFetchingSessions] = useState(false);
+  const [sessionError, setSessionError] = useState(null);
+  const sessionErrorTimer = useRef(null);
+
+  const showError = useCallback((msg) => {
+    setSessionError(msg);
+    if (sessionErrorTimer.current) clearTimeout(sessionErrorTimer.current);
+    sessionErrorTimer.current = setTimeout(() => setSessionError(null), 5000);
+  }, []);
+
+  const clearSessionError = useCallback(() => {
+    setSessionError(null);
+    if (sessionErrorTimer.current) {
+      clearTimeout(sessionErrorTimer.current);
+      sessionErrorTimer.current = null;
+    }
+  }, []);
 
   const setSessionId = useCallback((id) => {
     setSessionIdState(id);
@@ -115,10 +131,11 @@ export function SessionProvider({ children }) {
       setSessionId(id);
     } catch {
       setMessages([]);
+      showError("Failed to load session history.");
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [sessionId, setSessionId]);
+  }, [sessionId, setSessionId, showError]);
 
   const fetchSessions = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -127,11 +144,11 @@ export function SessionProvider({ children }) {
       const data = await listSessions();
       setSessions(data);
     } catch {
-      // silently fail
+      showError("Failed to load sessions.");
     } finally {
       setFetchingSessions(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, showError]);
 
   const deleteSession = useCallback(async (id) => {
     try {
@@ -141,18 +158,18 @@ export function SessionProvider({ children }) {
         resetChat();
       }
     } catch {
-      // silently fail
+      showError("Failed to delete session.");
     }
-  }, [sessionId, resetChat]);
+  }, [sessionId, resetChat, showError]);
 
   const renameSession = useCallback(async (id, title) => {
     try {
       await apiRename(id, title);
       setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
     } catch {
-      // silently fail
+      showError("Failed to rename session.");
     }
-  }, []);
+  }, [showError]);
 
   // Fetch sessions when auth is ready
   useEffect(() => {
@@ -227,8 +244,10 @@ export function SessionProvider({ children }) {
       deleteSession,
       renameSession,
       fetchSessions,
+      sessionError,
+      clearSessionError,
     }),
-    [sessionId, difficultyLevel, language, messages, addMessage, updateLastMessage, resetChat, isLoadingHistory, sessions, fetchingSessions, switchSession, createNewSession, deleteSession, renameSession, fetchSessions]
+    [sessionId, difficultyLevel, language, messages, addMessage, updateLastMessage, resetChat, isLoadingHistory, sessions, fetchingSessions, switchSession, createNewSession, deleteSession, renameSession, fetchSessions, sessionError, clearSessionError]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

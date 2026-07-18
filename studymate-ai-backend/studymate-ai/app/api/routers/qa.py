@@ -28,6 +28,23 @@ router = APIRouter(prefix="/qa", tags=["question-answering"])
 logger = get_logger(__name__)
 
 
+def _build_cache_key(
+    cache: LRUCache,
+    session_id: str,
+    question: str,
+    difficulty_level: str,
+    language: str,
+) -> str:
+    chroma = ChromaClient.get_instance()
+    return cache.make_key(
+        session_id,
+        question.strip().lower(),
+        difficulty_level,
+        language.lower(),
+        str(chroma.get_cached_count()),
+    )
+
+
 @router.post("", response_model=QAResponse)
 @limiter.limit(lambda: get_settings().rate_limit_qa)
 def ask_question(
@@ -43,14 +60,7 @@ def ask_question(
     start = time.perf_counter()
     session_id = session_service.get_or_create(payload.session_id, user_id=current_user.id)
 
-    chroma: ChromaClient = ChromaClient.get_instance()
-    cache_key = cache.make_key(
-        session_id,
-        payload.question.strip().lower(),
-        payload.difficulty_level,
-        payload.language.lower(),
-        str(chroma.count()),
-    )
+    cache_key = _build_cache_key(cache, session_id, payload.question, payload.difficulty_level, payload.language)
     cached_raw = cache.get(cache_key)
     if cached_raw:
         cached = json.loads(cached_raw)
@@ -117,6 +127,7 @@ def ask_question_stream(
     payload: QARequest,
     retrieval_service: RetrievalService = Depends(get_retrieval_service_dep),
     session_service: SessionService = Depends(get_session_service_dep),
+    cache: LRUCache = Depends(get_cache_dep),
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     """Stream the answer token-by-token via Server-Sent Events."""
@@ -124,8 +135,29 @@ def ask_question_stream(
     history = session_service.get_history(session_id, limit=10)
 
     retrieval_query = _build_retrieval_query(payload.question, history)
+    cache_key = _build_cache_key(cache, session_id, payload.question, payload.difficulty_level, payload.language)
 
     def event_stream():
+        cached_raw = cache.get(cache_key)
+        if cached_raw:
+            cached = json.loads(cached_raw)
+            meta = {
+                "session_id": session_id,
+                "sources": cached["sources"],
+                "images": cached.get("images", []),
+                "sufficient_context": cached["sufficient_context"],
+                "difficulty_level": payload.difficulty_level,
+                "language": payload.language,
+                "cached": True,
+            }
+            yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
+            yield f"data: {json.dumps({'token': cached['answer']})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            session_service.record_qa(
+                session_id, payload.question, cached["answer"], payload.difficulty_level, payload.language
+            )
+            return
+
         full_answer_parts = []
         meta = {}
         meta_sent = False
@@ -164,6 +196,17 @@ def ask_question_stream(
             session_service.record_qa(
                 session_id, payload.question, full_answer, payload.difficulty_level, payload.language
             )
+            cache.set(
+                cache_key,
+                json.dumps(
+                    {
+                        "answer": full_answer,
+                        "sources": meta.get("sources", []),
+                        "images": meta.get("images", []),
+                        "sufficient_context": meta.get("sufficient_context", False),
+                    }
+                ),
+            )
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -182,6 +225,3 @@ def _build_retrieval_query(question: str, history: list) -> str:
         second_last_q = history[-2].question
         context = f"{second_last_q} {last_q} {question}"
     return context
-
-
-

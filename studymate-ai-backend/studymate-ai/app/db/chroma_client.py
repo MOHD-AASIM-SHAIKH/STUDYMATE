@@ -5,6 +5,7 @@ Wrapped behind a small class so the rest of the app never touches the
 chromadb client directly — this keeps a future swap (e.g. to a hosted
 vector DB) contained to one file.
 """
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -38,6 +39,9 @@ class ChromaClient:
         except Exception as exc:  # pragma: no cover - defensive
             logger.error("Failed to initialize ChromaDB", extra={"ctx": {"error": str(exc)}})
             raise VectorStoreError("Could not initialize vector store.") from exc
+
+        self._cached_count: Optional[int] = None
+        self._count_ts: float = 0.0
 
     @classmethod
     def get_instance(cls) -> "ChromaClient":
@@ -77,6 +81,13 @@ class ChromaClient:
             return self._collection.count()
         except Exception:
             return 0
+
+    def get_cached_count(self) -> int:
+        now = time.time()
+        if self._cached_count is None or now - self._count_ts > 30:
+            self._cached_count = self.count()
+            self._count_ts = now
+        return self._cached_count
 
     def is_ready(self) -> bool:
         try:

@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ChatBubble from "../components/ChatBubble";
 import ChatHistorySidebar from "../components/ChatHistorySidebar";
 import DifficultyToggle from "../components/DifficultyToggle";
+import ErrorBanner from "../components/ErrorBanner";
 import LanguageSelector from "../components/LanguageSelector";
 import { useChat } from "../hooks/useChat";
 import { useSession } from "../context/SessionContext";
 import { ocrImage, ocrIngest } from "../api/endpoints";
 
 export default function ChatPage() {
-  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory, sessionId } = useSession();
-  const { sendMessage, cancelStream, isSending, regenerate, editMessage } = useChat();
+  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory, sessionId, sessionError, clearSessionError } = useSession();
+  const { sendMessage, cancelStream, isSending, error, clearError, regenerate, editMessage } = useChat();
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -187,6 +188,12 @@ export default function ChatPage() {
               Export
             </button>
           </div>
+
+          {(error || sessionError) && (
+            <div className="mb-3 shrink-0">
+              <ErrorBanner message={error || sessionError} onDismiss={error ? clearError : clearSessionError} />
+            </div>
+          )}
 
           <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2 border-b border-line pb-3 sm:mb-4 sm:gap-3 sm:pb-4">
             <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />

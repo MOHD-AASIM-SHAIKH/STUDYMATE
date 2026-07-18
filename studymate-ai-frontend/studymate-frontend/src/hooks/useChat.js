@@ -148,5 +148,7 @@ export function useChat() {
     [messages, sessionId, replaceMessages, streamAnswer, setSessionId]
   );
 
-  return { sendMessage, cancelStream, isSending, error, regenerate, editMessage };
+  const clearError = useCallback(() => setError(null), []);
+
+  return { sendMessage, cancelStream, isSending, error, clearError, regenerate, editMessage };
 }
