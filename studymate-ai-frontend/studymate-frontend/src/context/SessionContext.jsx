@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { getSessionHistory } from "../api/endpoints";
+import { getSessionHistory, listSessions, deleteSession as apiDelete, renameSession as apiRename } from "../api/endpoints";
 import { useAuth } from "./AuthContext";
 
 const SessionContext = createContext(null);
@@ -28,7 +28,6 @@ function setToStorage(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch {
-    // localStorage may be unavailable
   }
 }
 
@@ -36,7 +35,6 @@ function removeFromStorage(key) {
   try {
     localStorage.removeItem(key);
   } catch {
-    // noop
   }
 }
 
@@ -47,8 +45,9 @@ export function SessionProvider({ children }) {
   const [language, setLanguageState] = useState(() => getFromStorage(LANGUAGE_KEY, "English"));
   const [messages, setMessages] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [fetchingSessions, setFetchingSessions] = useState(false);
 
-  // Persist to localStorage whenever state changes
   const setSessionId = useCallback((id) => {
     setSessionIdState(id);
     if (id) {
@@ -81,7 +80,89 @@ export function SessionProvider({ children }) {
     setSessionId(null);
   }, [setSessionId]);
 
-  // Wait for auth to be ready, then restore session history from the backend
+  const replaceMessages = useCallback((newMessages) => {
+    setMessages(newMessages);
+  }, []);
+
+  const createNewSession = useCallback(() => {
+    setMessages([]);
+    setSessionId(null);
+  }, [setSessionId]);
+
+  const switchSession = useCallback(async (id) => {
+    if (id === sessionId) return;
+    setIsLoadingHistory(true);
+    try {
+      const data = await getSessionHistory(id, 50);
+      const restored = [];
+      for (const item of data.history) {
+        restored.push({
+          id: crypto.randomUUID(),
+          role: "student",
+          content: item.question,
+          createdAt: new Date(item.created_at),
+        });
+        restored.push({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: item.answer,
+          sources: [],
+          sufficientContext: true,
+          createdAt: new Date(item.created_at),
+        });
+      }
+      setMessages(restored);
+      setSessionId(id);
+    } catch {
+      setMessages([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [sessionId, setSessionId]);
+
+  const fetchSessions = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setFetchingSessions(true);
+    try {
+      const data = await listSessions();
+      setSessions(data);
+    } catch {
+      // silently fail
+    } finally {
+      setFetchingSessions(false);
+    }
+  }, [isAuthenticated]);
+
+  const deleteSession = useCallback(async (id) => {
+    try {
+      await apiDelete(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (sessionId === id) {
+        resetChat();
+      }
+    } catch {
+      // silently fail
+    }
+  }, [sessionId, resetChat]);
+
+  const renameSession = useCallback(async (id, title) => {
+    try {
+      await apiRename(id, title);
+      setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  // Fetch sessions when auth is ready
+  useEffect(() => {
+    if (authLoading) return;
+    if (isAuthenticated) {
+      fetchSessions();
+    }
+  }, [authLoading, isAuthenticated, fetchSessions]);
+
+  // Restore session history when sessionId is set (from storage or login)
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated || !sessionId) {
@@ -111,12 +192,19 @@ export function SessionProvider({ children }) {
         setMessages(restored);
       })
       .catch(() => {
-        // Session expired or invalid — start fresh
         setSessionId(null);
         setMessages([]);
       })
       .finally(() => setIsLoadingHistory(false));
-  }, [authLoading, isAuthenticated, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh session list after messages change (auto-title)
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+    if (messages.length > 0 && messages.some((m) => m.role === "assistant" && m.content && !m.streaming)) {
+      fetchSessions();
+    }
+  }, [messages, isAuthenticated, authLoading, fetchSessions]);
 
   const value = useMemo(
     () => ({
@@ -129,10 +217,18 @@ export function SessionProvider({ children }) {
       messages,
       addMessage,
       updateLastMessage,
+      replaceMessages,
       resetChat,
       isLoadingHistory,
+      sessions,
+      fetchingSessions,
+      switchSession,
+      createNewSession,
+      deleteSession,
+      renameSession,
+      fetchSessions,
     }),
-    [sessionId, difficultyLevel, language, messages, addMessage, updateLastMessage, resetChat, isLoadingHistory]
+    [sessionId, difficultyLevel, language, messages, addMessage, updateLastMessage, resetChat, isLoadingHistory, sessions, fetchingSessions, switchSession, createNewSession, deleteSession, renameSession, fetchSessions]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

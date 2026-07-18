@@ -34,6 +34,7 @@ class StudentSession(Base):
 
     id = Column(String(36), primary_key=True)  # UUID
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_active_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

@@ -3,65 +3,74 @@ import { askQuestion, askQuestionStream } from "../api/endpoints";
 import { useSession } from "../context/SessionContext";
 
 export function useChat() {
-  const { sessionId, setSessionId, difficultyLevel, language, addMessage, updateLastMessage, messages } = useSession();
+  const { sessionId, setSessionId, difficultyLevel, language, addMessage, updateLastMessage, replaceMessages, messages } = useSession();
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
   const currentMsgIdRef = useRef(null);
 
-  const sendMessage = useCallback(
+  const streamAnswer = useCallback(
+    (question, beforeSend) => {
+      const msgId = crypto.randomUUID();
+      currentMsgIdRef.current = msgId;
+      addMessage({ id: msgId, role: "assistant", content: "", sources: [], images: [], sufficientContext: true, streaming: true });
+
+      let fullContent = "";
+      let metaData = null;
+
+      beforeSend?.();
+
+      abortRef.current = askQuestionStream({
+        question,
+        difficultyLevel,
+        language,
+        sessionId,
+        onToken: (token) => {
+          fullContent += token;
+          updateLastMessage(msgId, { content: fullContent });
+        },
+        onMeta: (meta) => {
+          metaData = meta;
+          if (!sessionId) setSessionId(meta.session_id);
+        },
+        onDone: () => {
+          setIsSending(false);
+          updateLastMessage(msgId, {
+            content: fullContent,
+            streaming: false,
+            sources: metaData?.sources || [],
+            images: metaData?.images || [],
+            sufficientContext: metaData?.sufficient_context ?? true,
+          });
+        },
+        onError: (errMsg) => {
+          setIsSending(false);
+          updateLastMessage(msgId, {
+            content: null,
+            streaming: false,
+            error: errMsg || "Couldn't generate an answer. Please try again.",
+          });
+          setError(errMsg);
+        },
+      });
+    },
+    [sessionId, setSessionId, difficultyLevel, language, addMessage, updateLastMessage]
+  );
+
+  const doSend = useCallback(
     async (question, { stream = true } = {}) => {
       const trimmed = question.trim();
       if (!trimmed) return;
 
       setError(null);
-      addMessage({ role: "student", content: trimmed });
       setIsSending(true);
 
       if (stream) {
-        // Add a placeholder assistant message that will be filled as tokens arrive
-        const msgId = crypto.randomUUID();
-        currentMsgIdRef.current = msgId;
-        addMessage({ id: msgId, role: "assistant", content: "", sources: [], images: [], sufficientContext: true, streaming: true });
-
-        let fullContent = "";
-        let metaData = null;
-
-        abortRef.current = askQuestionStream({
-          question: trimmed,
-          difficultyLevel,
-          language,
-          sessionId,
-          onToken: (token) => {
-            fullContent += token;
-            updateLastMessage(msgId, { content: fullContent });
-          },
-          onMeta: (meta) => {
-            metaData = meta;
-            if (!sessionId) setSessionId(meta.session_id);
-          },
-          onDone: () => {
-            setIsSending(false);
-            updateLastMessage(msgId, {
-              content: fullContent,
-              streaming: false,
-              sources: metaData?.sources || [],
-              images: metaData?.images || [],
-              sufficientContext: metaData?.sufficient_context ?? true,
-            });
-          },
-          onError: (errMsg) => {
-            setIsSending(false);
-            updateLastMessage(msgId, {
-              content: null,
-              streaming: false,
-              error: errMsg || "Couldn't generate an answer. Please try again.",
-            });
-            setError(errMsg);
-          },
-        });
+        addMessage({ role: "student", content: trimmed });
+        streamAnswer(trimmed);
       } else {
         try {
+          addMessage({ role: "student", content: trimmed });
           const result = await askQuestion({
             question: trimmed,
             difficultyLevel,
@@ -91,7 +100,12 @@ export function useChat() {
         }
       }
     },
-    [sessionId, setSessionId, difficultyLevel, language, addMessage, updateLastMessage]
+    [sessionId, setSessionId, difficultyLevel, language, addMessage, streamAnswer]
+  );
+
+  const sendMessage = useCallback(
+    (question) => doSend(question, { stream: true }),
+    [doSend]
   );
 
   const cancelStream = useCallback(() => {
@@ -106,5 +120,33 @@ export function useChat() {
     }
   }, [updateLastMessage]);
 
-  return { sendMessage, cancelStream, isSending, error };
+  const regenerate = useCallback(
+    (message) => {
+      const msgIdx = messages.findIndex((m) => m.id === message.id);
+      if (msgIdx < 1) return;
+      const studentMsg = messages[msgIdx - 1];
+      if (studentMsg?.role !== "student") return;
+      doSend(studentMsg.content, { stream: true });
+    },
+    [messages, doSend]
+  );
+
+  const editMessage = useCallback(
+    (index, newQuestion) => {
+      const trimmed = newQuestion.trim();
+      if (!trimmed) return;
+
+      setError(null);
+      setIsSending(true);
+
+      const before = messages.slice(0, index);
+      replaceMessages([...before, { id: crypto.randomUUID(), role: "student", content: trimmed, createdAt: new Date() }]);
+      streamAnswer(trimmed, () => {
+        if (!sessionId) setSessionId(sessionId);
+      });
+    },
+    [messages, sessionId, replaceMessages, streamAnswer, setSessionId]
+  );
+
+  return { sendMessage, cancelStream, isSending, error, regenerate, editMessage };
 }

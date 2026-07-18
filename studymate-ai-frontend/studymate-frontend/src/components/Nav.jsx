@@ -5,9 +5,9 @@ import ThemeToggle from "./ThemeToggle";
 const NAV_ITEMS = [
   { to: "/", label: "Chat", icon: ChatIcon },
   { to: "/flashcards", label: "Flashcards", icon: FlashcardIcon },
+  { to: "/quiz", label: "Quiz", icon: QuizIcon },
   { to: "/library", label: "Library", icon: LibraryIcon },
   { to: "/notes", label: "Notes", icon: NotesIcon },
-  { to: "/history", label: "History", icon: HistoryIcon },
 ];
 
 export default function Nav() {
@@ -54,9 +54,6 @@ export default function Nav() {
               >
                 <item.icon />
                 <span>{item.label}</span>
-                {({ isActive }) =>
-                  isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/60" />
-                }
               </NavLink>
             </li>
           ))}
@@ -135,6 +132,15 @@ function FlashcardIcon() {
     </svg>
   );
 }
+function QuizIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
 function LibraryIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
@@ -148,15 +154,6 @@ function NotesIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
       <path d="M14 2v6h6M9 13h6M9 17h6" />
-    </svg>
-  );
-}
-function HistoryIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0">
-      <path d="M3 3v5h5" />
-      <path d="M3.05 13A9 9 0 106 5.3L3 8" />
-      <path d="M12 7v5l4 2" />
     </svg>
   );
 }

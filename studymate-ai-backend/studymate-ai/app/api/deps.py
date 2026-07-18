@@ -20,6 +20,7 @@ from app.services.embedding_service import EmbeddingService, get_embedding_servi
 from app.services.flashcard_service import FlashcardService
 from app.services.llm_service import LLMProvider, get_llm_provider
 from app.services.notes_service import NotesService
+from app.services.quiz_service import QuizService
 from app.services.retrieval_service import RetrievalService
 from app.services.session_service import SessionService
 
@@ -46,6 +47,13 @@ def get_notes_service_dep(
     llm_provider: LLMProvider = Depends(get_llm_provider),
 ) -> NotesService:
     return NotesService(retrieval_service, llm_provider)
+
+
+def get_quiz_service_dep(
+    retrieval_service: RetrievalService = Depends(get_retrieval_service_dep),
+    llm_provider: LLMProvider = Depends(get_llm_provider),
+) -> QuizService:
+    return QuizService(retrieval_service, llm_provider)
 
 
 def get_flashcard_service_dep(

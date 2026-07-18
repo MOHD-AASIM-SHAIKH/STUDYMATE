@@ -1,12 +1,13 @@
 import { Route, Routes } from "react-router-dom";
 import Nav from "./components/Nav";
+import OnboardingOverlay from "./components/OnboardingOverlay";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChatPage from "./pages/ChatPage";
 import FlashcardsPage from "./pages/FlashcardsPage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
 import NotesPage from "./pages/NotesPage";
-import HistoryPage from "./pages/HistoryPage";
+import QuizPage from "./pages/QuizPage";
 import RegisterPage from "./pages/RegisterPage";
 import { useAuth } from "./context/AuthContext";
 
@@ -28,13 +29,14 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-paper sm:flex-row">
       <Nav />
+      <OnboardingOverlay />
       <main className="min-h-0 flex-1 overflow-y-auto">
         <Routes>
           <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
           <Route path="/flashcards" element={<ProtectedRoute><FlashcardsPage /></ProtectedRoute>} />
-          <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+          <Route path="/quiz" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         </Routes>
       </main>

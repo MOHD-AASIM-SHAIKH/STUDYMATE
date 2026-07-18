@@ -153,6 +153,28 @@ class SessionHistoryResponse(BaseModel):
     history: List[QAHistoryItem]
 
 
+class SessionListItem(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    last_active_at: datetime
+    message_count: int
+    last_preview: Optional[str] = None
+
+
+class SessionListResponse(BaseModel):
+    sessions: List[SessionListItem]
+
+
+class SessionRenameRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+
+class SessionRenameResponse(BaseModel):
+    id: str
+    title: str
+
+
 # ---------------------------------------------------------------------------
 # Flashcards
 # ---------------------------------------------------------------------------
@@ -173,6 +195,31 @@ class FlashcardRequest(BaseModel):
 
 class FlashcardResponse(BaseModel):
     flashcards: List[Flashcard]
+    sources: List[SourceCitation]
+    sufficient_context: bool
+
+
+# ---------------------------------------------------------------------------
+# Quiz
+# ---------------------------------------------------------------------------
+class QuizQuestion(BaseModel):
+    question: str
+    options: List[str]
+    correct_index: int
+    explanation: str
+    topic: str = ""
+
+
+class QuizRequest(BaseModel):
+    topic: Optional[str] = Field(default=None, max_length=300)
+    session_id: Optional[str] = Field(default=None)
+    count: int = Field(default=5, ge=1, le=20)
+    difficulty_level: str = Field(default="beginner", max_length=50)
+    language: str = Field(default="English", max_length=50)
+
+
+class QuizResponse(BaseModel):
+    questions: List[QuizQuestion]
     sources: List[SourceCitation]
     sufficient_context: bool
 

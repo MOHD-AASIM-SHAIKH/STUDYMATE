@@ -1,23 +1,13 @@
-"""
-Session management.
-
-Design: the backend issues an opaque UUID session_id on a student's first
-request (when the client sends none). The client is expected to persist and
-resend that id on subsequent requests. No login/auth is implemented here —
-this keeps the assignment friction-free for students while still giving
-each browser/device its own isolated history. Swapping in real auth later
-just means mapping an authenticated user_id to sessions instead of trusting
-the client-supplied id.
-"""
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession
 
-from app.core.exceptions import SessionNotFoundError
+from app.core.exceptions import AuthError, SessionNotFoundError
 from app.db.sqlite_client import QAHistory, StudentSession
-from app.models.schemas import QAHistoryItem
+from app.models.schemas import QAHistoryItem, SessionListItem
 
 
 class SessionService:
@@ -59,6 +49,17 @@ class SessionService:
         )
         self._db.add(entry)
         self._db.commit()
+        self._auto_title(session_id, question)
+
+    def _auto_title(self, session_id: str, question: str) -> None:
+        session = self._db.get(StudentSession, session_id)
+        if not session or session.title:
+            return
+        title = question.strip()[:80]
+        if not title:
+            return
+        session.title = title
+        self._db.commit()
 
     def get_history(self, session_id: str, limit: int = 20) -> List[QAHistoryItem]:
         self.require_existing(session_id)
@@ -81,6 +82,53 @@ class SessionService:
             for r in reversed(rows)
         ]
 
+    def list_user_sessions(self, user_id: str) -> List[SessionListItem]:
+        rows = (
+            self._db.query(
+                StudentSession.id,
+                StudentSession.title,
+                StudentSession.created_at,
+                StudentSession.last_active_at,
+                func.count(QAHistory.id).label("msg_count"),
+                func.substr(func.coalesce(QAHistory.question, ""), 1, 60).label("last_preview"),
+            )
+            .outerjoin(QAHistory, StudentSession.id == QAHistory.session_id)
+            .filter(StudentSession.user_id == user_id)
+            .group_by(StudentSession.id)
+            .order_by(StudentSession.last_active_at.desc())
+            .all()
+        )
+        return [
+            SessionListItem(
+                id=r.id,
+                title=r.title or "New chat",
+                created_at=r.created_at,
+                last_active_at=r.last_active_at,
+                message_count=r.msg_count or 0,
+                last_preview=r.last_preview or None,
+            )
+            for r in rows
+        ]
 
-def get_session_service(db: DBSession) -> SessionService:  # pragma: no cover - overridden by DI wiring
+    def delete_session(self, session_id: str, user_id: str) -> None:
+        session = self._db.get(StudentSession, session_id)
+        if not session:
+            raise SessionNotFoundError(f"No session found with id '{session_id}'.")
+        if session.user_id != user_id:
+            raise AuthError("You do not have access to this session.")
+        self._db.delete(session)
+        self._db.commit()
+
+    def rename_session(self, session_id: str, title: str, user_id: str) -> StudentSession:
+        session = self._db.get(StudentSession, session_id)
+        if not session:
+            raise SessionNotFoundError(f"No session found with id '{session_id}'.")
+        if session.user_id != user_id:
+            raise AuthError("You do not have access to this session.")
+        session.title = title.strip()[:200]
+        self._db.commit()
+        return session
+
+
+def get_session_service(db: DBSession) -> SessionService:
     return SessionService(db)

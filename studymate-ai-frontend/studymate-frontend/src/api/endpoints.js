@@ -105,11 +105,41 @@ export async function generateFlashcards({ topic, sessionId, count, difficultyLe
   return data;
 }
 
+/** POST /quiz */
+export async function generateQuiz({ topic, sessionId, count = 5, difficultyLevel = "beginner", language = "English" }) {
+  const { data } = await apiClient.post("/quiz", {
+    topic: topic || null,
+    session_id: sessionId || null,
+    count,
+    difficulty_level: difficultyLevel,
+    language,
+  });
+  return data;
+}
+
+/** GET /sessions */
+export async function listSessions() {
+  const { data } = await apiClient.get("/sessions");
+  return data.sessions;
+}
+
 /** GET /sessions/:id/history */
 export async function getSessionHistory(sessionId, limit = 50) {
   const { data } = await apiClient.get(`/sessions/${encodeURIComponent(sessionId)}/history`, {
     params: { limit },
   });
+  return data;
+}
+
+/** DELETE /sessions/:id */
+export async function deleteSession(sessionId) {
+  const { data } = await apiClient.delete(`/sessions/${encodeURIComponent(sessionId)}`);
+  return data;
+}
+
+/** PATCH /sessions/:id */
+export async function renameSession(sessionId, title) {
+  const { data } = await apiClient.patch(`/sessions/${encodeURIComponent(sessionId)}`, { title });
   return data;
 }
 

@@ -1,123 +1,319 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ChatBubble from "../components/ChatBubble";
+import ChatHistorySidebar from "../components/ChatHistorySidebar";
 import DifficultyToggle from "../components/DifficultyToggle";
 import LanguageSelector from "../components/LanguageSelector";
 import { useChat } from "../hooks/useChat";
 import { useSession } from "../context/SessionContext";
 
 export default function ChatPage() {
-  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory } = useSession();
-  const { sendMessage, cancelStream, isSending } = useChat();
+  const { messages, difficultyLevel, setDifficultyLevel, language, setLanguage, isLoadingHistory, sessionId } = useSession();
+  const { sendMessage, cancelStream, isSending, regenerate, editMessage } = useChat();
   const [input, setInput] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editValue, setEditValue] = useState("");
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isSending]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!input.trim() || isSending) return;
-    const question = input;
+  const handleSubmit = useCallback((text) => {
+    const q = (text || input).trim();
+    if (!q || isSending) return;
     setInput("");
-    sendMessage(question);
-  };
+    sendMessage(q);
+  }, [input, isSending, sendMessage]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSubmit();
     }
   };
 
+  const handleEditStart = (index, currentQuestion) => {
+    setEditingIndex(index);
+    setEditValue(currentQuestion);
+  };
+
+  const handleEditSubmit = () => {
+    if (editValue.trim() && editingIndex !== null) {
+      editMessage(editingIndex, editValue.trim());
+    }
+    setEditingIndex(null);
+    setEditValue("");
+  };
+
+  const handleExport = () => {
+    if (messages.length === 0) return;
+    const text = messages.map((m) => {
+      const role = m.role === "student" ? "You" : "StudyMate";
+      return `**${role}**: ${m.content || "(thinking...)"}`;
+    }).join("\n\n");
+    const blob = new Blob([text], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `studymate-chat-${sessionId?.slice(0, 8) || "export"}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSidebarOpen((o) => !o);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "e") {
+        e.preventDefault();
+        handleExport();
+      }
+      if (e.key === "Escape" && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+      if (e.key === "ArrowUp" && !input && messages.length > 0) {
+        const lastStudent = [...messages].reverse().find((m) => m.role === "student");
+        if (lastStudent) {
+          setInput(lastStudent.content);
+          inputRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [sidebarOpen, input, messages]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 pb-24 pt-4 sm:pb-4 sm:pt-6">
-      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl text-ink">Ask about your course material</h1>
-          <p className="text-sm text-ink-muted">Answers are grounded only in what your teacher has uploaded.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />
-          <LanguageSelector value={language} onChange={setLanguage} />
-        </div>
-      </div>
+    <div className="flex h-full">
+      <ChatHistorySidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 space-y-4 overflow-y-auto py-2 scroll-smooth">
-        {isLoadingHistory && (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
-              <span className="ml-1 text-sm text-ink-muted">Restoring your conversation...</span>
-            </div>
-          </div>
-        )}
-        {!isLoadingHistory && messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
-                <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-              </svg>
-            </div>
-            <p className="font-display text-lg text-ink">No questions yet</p>
-            <p className="mt-1 text-sm text-ink-muted">Ask something from your uploaded notes to get started.</p>
-          </div>
-        )}
-        {messages.map((m) => (
-          <ChatBubble key={m.id} message={m} />
-        ))}
-        {isSending && !messages.some((m) => m.streaming) && (
-          <div className="flex justify-start animate-fade-slide-in">
-            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 shadow-sm">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
-            </div>
-          </div>
-        )}
-        <div ref={scrollRef} />
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-3 flex items-end gap-2">
-        <label htmlFor="chat-input" className="sr-only">Ask a question</label>
-        <div className="relative flex-1">
-          <textarea
-            id="chat-input"
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask a question about your notes..."
-            className="max-h-32 w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 pr-12 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all shadow-sm"
-          />
-        </div>
-        {isSending ? (
+      <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2 sm:hidden">
           <button
             type="button"
-            onClick={cancelStream}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/90 transition-all shadow-sm"
-            title="Stop generating"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-line/50"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12" rx="2" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-        ) : (
+          <span className="font-display text-sm font-semibold text-ink">StudyMate</span>
           <button
-            type="submit"
-            disabled={!input.trim()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-            title="Send"
+            type="button"
+            onClick={handleExport}
+            disabled={messages.length === 0}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-line/50 disabled:opacity-30"
+            title="Export chat"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
           </button>
-        )}
-      </form>
+        </div>
+
+        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 pb-24 pt-4 sm:pb-4 sm:pt-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen((o) => !o)}
+                className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-line/50 transition-colors"
+                title="Toggle sidebar (Cmd+K)"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="font-display text-xl text-ink">Chat</h1>
+                <p className="text-sm text-ink-muted hidden sm:block">Ask questions grounded in your course material</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={messages.length === 0}
+                className="hidden sm:flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:border-accent disabled:opacity-30 transition-all"
+                title="Export chat (Cmd+E)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Export
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-line pb-4">
+            <DifficultyToggle value={difficultyLevel} onChange={setDifficultyLevel} />
+            <LanguageSelector value={language} onChange={setLanguage} />
+          </div>
+
+          <div className="flex-1 space-y-4 overflow-y-auto py-2 scroll-smooth">
+            {isLoadingHistory && (
+              <div className="flex items-center justify-center py-16">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
+                  <span className="ml-1 text-sm text-ink-muted">Restoring your conversation...</span>
+                </div>
+              </div>
+            )}
+            {!isLoadingHistory && messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                  </svg>
+                </div>
+                <p className="font-display text-lg text-ink">No questions yet</p>
+                <p className="mt-1 text-sm text-ink-muted">Ask something from your uploaded notes to get started.</p>
+              </div>
+            )}
+            {messages.map((m, idx) => (
+              <div key={m.id} className="group relative">
+                <ChatBubble message={m} />
+                {!m.streaming && m.role === "assistant" && m.content && !m.error && (
+                  <div className="mt-1 flex items-center gap-2 pl-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => regenerate(m)}
+                      className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors"
+                      title="Regenerate"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+                      </svg>
+                      Regenerate
+                    </button>
+                  </div>
+                )}
+                {!m.streaming && m.role === "student" && m.content && (
+                  <div className="mt-1 flex items-center gap-2 justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => handleEditStart(idx, m.content)}
+                      className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-ink-muted hover:text-ink hover:bg-line/40 transition-colors"
+                      title="Edit message"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                      Edit
+                    </button>
+                  </div>
+                )}
+
+                {editingIndex === idx && (
+                  <div className="mt-2 flex gap-2 animate-fade-slide-in">
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleEditSubmit();
+                        if (e.key === "Escape") { setEditingIndex(null); setEditValue(""); }
+                      }}
+                      className="flex-1 rounded-lg border border-accent bg-surface px-3 py-2 text-sm text-ink outline-none shadow-sm"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleEditSubmit}
+                      className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setEditingIndex(null); setEditValue(""); }}
+                      className="rounded-full border border-line px-3 py-1.5 text-sm font-medium text-ink-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isSending && !messages.some((m) => m.streaming) && (
+              <div className="flex justify-start animate-fade-slide-in">
+                <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-line bg-surface px-4 py-3 shadow-sm">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "0ms" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "150ms" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            )}
+            <div ref={scrollRef} />
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-3 flex items-end gap-2">
+            <label htmlFor="chat-input" className="sr-only">Ask a question</label>
+            <div className="relative flex-1">
+              <textarea
+                ref={inputRef}
+                id="chat-input"
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a question about your notes... (↑ to edit last)"
+                className="max-h-32 w-full resize-none rounded-2xl border border-line bg-surface px-4 py-3 pr-12 text-[15px] text-ink placeholder:text-ink-muted focus:border-accent focus:shadow-glow transition-all shadow-sm"
+              />
+            </div>
+            {isSending ? (
+              <button
+                type="button"
+                onClick={cancelStream}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/90 transition-all shadow-sm"
+                title="Stop generating"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                title="Send"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            )}
+          </form>
+
+          <div className="mt-2 text-center text-[10px] text-ink-muted/50">
+            <kbd className="rounded border border-line px-1 font-mono text-[9px]">Cmd+K</kbd> toggle sidebar ·{" "}
+            <kbd className="rounded border border-line px-1 font-mono text-[9px]">Cmd+E</kbd> export ·{" "}
+            <kbd className="rounded border border-line px-1 font-mono text-[9px]">↑</kbd> edit last
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routers import auth, flashcards, health, ingestion, notes, qa, sessions
+from app.api.routers import auth, flashcards, health, ingestion, notes, qa, quiz, sessions
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import configure_logging, get_logger
@@ -34,7 +34,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -62,6 +62,7 @@ app.include_router(ingestion.router)
 app.include_router(qa.router)
 app.include_router(notes.router)
 app.include_router(sessions.router)
+app.include_router(quiz.router)
 
 
 @app.on_event("startup")
