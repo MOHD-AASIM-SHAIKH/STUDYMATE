@@ -8,7 +8,7 @@ a ready-to-fill stub — swapping providers is a one-line config change
 routers, etc. only ever talk to `LLMProvider`).
 """
 from abc import ABC, abstractmethod
-from typing import Generator, Optional
+from typing import Callable, Generator, Optional
 
 from groq import Groq
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -29,7 +29,8 @@ class LLMProvider(ABC):
         raise NotImplementedError
 
     def generate_stream(
-        self, system_prompt: str, user_prompt: str, temperature: float = 0.2
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.2,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Generator[str, None, None]:
         """Yield text chunks as they are generated. Default falls back to
         non-streaming for providers that don't implement streaming."""
@@ -63,7 +64,8 @@ class GroqProvider(LLMProvider):
             raise LLMProviderError("The AI provider failed to respond. Please try again shortly.") from exc
 
     def generate_stream(
-        self, system_prompt: str, user_prompt: str, temperature: float = 0.2
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.2,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> Generator[str, None, None]:
         try:
             stream = self._client.chat.completions.create(
@@ -78,6 +80,10 @@ class GroqProvider(LLMProvider):
                 stream=True,
             )
             for chunk in stream:
+                if cancel_check and cancel_check():
+                    logger.info("Groq stream cancelled by client disconnect")
+                    stream.close()
+                    return
                 delta = chunk.choices[0].delta.content
                 if delta:
                     yield delta
